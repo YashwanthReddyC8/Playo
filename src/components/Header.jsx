@@ -24,7 +24,7 @@ function Header({ hideLocationSearch = false }) {
             )}
           </div>
           <div className="flex gap-8 text-sm font-medium">
-            <div className="flex items-center">
+            <div className="flex items-center backdrop-blur-2xl px-3 py-1 rounded-full  cursor-pointer">
               <svg
                 width="1.7rem"
                 height="1.7rem"
@@ -44,7 +44,7 @@ function Header({ hideLocationSearch = false }) {
               </svg>
               <span className="cursor-pointer font-black ml-1">Play</span>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center backdrop-blur-2xl px-3 py-1 rounded-full  cursor-pointer">
               <svg
                 width="1.7rem"
                 height="1.7rem"
@@ -64,7 +64,7 @@ function Header({ hideLocationSearch = false }) {
               </svg>
               <span className="cursor-pointer font-black ml-1">Book</span>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center backdrop-blur-2xl px-3 py-1 rounded-full  cursor-pointer">
               <svg
                 width="1.7rem"
                 height="1.7rem"

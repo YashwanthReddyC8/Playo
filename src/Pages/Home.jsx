@@ -34,7 +34,7 @@ function Home() {
   navigator.geolocation.getCurrentPosition(success, error, options);
   return (
     <div>
-      <div className="sticky top-0 z-50 backdrop-blur-2xl rounded-b-xl" >
+      <div className="sticky top-0 z-50  rounded-b-xl" >
         <Header hideLocationSearch={!useIsVisible(target)} />
       </div>
 
