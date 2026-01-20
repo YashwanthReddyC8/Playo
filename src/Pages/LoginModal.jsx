@@ -1,14 +1,14 @@
-import React from "react";
+import ReactDOM from "react-dom";
 import login_bg from "../assets/login_bg.png";
 import login_top from "../assets/login-top.png";
 
 export default function LoginModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
       {/* Modal Box */}
-      <div className="bg-white w-[900px] h-[550px] rounded-2xl overflow-hidden flex relative">
+      <div className="bg-white w-[900px] h-[550px] rounded-2xl overflow-hidden flex">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -81,6 +81,7 @@ export default function LoginModal({ isOpen, onClose }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root")
   );
 }

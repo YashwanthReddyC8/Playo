@@ -31,10 +31,21 @@ function Home() {
     console.warn(`ERROR(${err.code}): ${err.message}`);
   }
 
+  const glassmorphism = {
+    // borderTop: "2px solid #ffffff75",
+    // borderLeft: "2px solid #ffffff75",
+    boxShadow: "5px 5px 12px #00000035",
+    background: "#ffffff25",
+    borderRadius: "15px",
+    overflow: "hidden",
+    backdropFilter: "blur(4px)",
+    WebkitBackdropFilter: "blur(4px)", /* Safari support */
+  }
+
   navigator.geolocation.getCurrentPosition(success, error, options);
   return (
     <div>
-      <div className="sticky top-0 z-50  rounded-b-xl" >
+      <div className="sticky top-2 z-50  rounded-b-xl" style={glassmorphism} >
         <Header hideLocationSearch={!useIsVisible(target)} />
       </div>
 
