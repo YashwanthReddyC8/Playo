@@ -6,8 +6,10 @@ import Home_book from "../components/Home_book.jsx";
 import useIsVisible from "../components/UseIsVisible.jsx";
 import Home_play from "../components/Home_Play.jsx";
 import Popular_games from "../components/Popular_games.jsx";
+// import LoginModal from "./LoginModal.jsx";
 function Home() {
   const [location, setLocation] = useState("");
+  // const [showLogin, setShowLogin] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const target = useRef(null);
   const options = {
