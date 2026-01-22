@@ -4,7 +4,8 @@ body {
   margin: 0 auto;
   /* padding: 2rem; */
   text-align: center;
-  /* background-color: white; */
+  background-color: white;
+  color: white;
 }
 
 .glassmorphism {

@@ -1,7 +1,7 @@
 export default function HeroSearch() {
     return (
         <>
-            <h1 className="font-bold text-main text-2xl md:text-[32px]
+            <h1 className="font-bold text-main text-2xl md:text-[32px] text-black
                      leading-[1.5] w-full">
                 Sports Trainers in Hyderabad
             </h1>

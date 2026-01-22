@@ -52,7 +52,7 @@ function Home() {
               />
             </div>
 
-            <h1 className="text-4xl font-extrabold leading-tight my-4">
+            <h1 className="text-4xl font-extrabold leading-tight my-4 text-gray-900">
               {/* text-black"> */}
               BOOK SPORTS VENUES.
               <br />

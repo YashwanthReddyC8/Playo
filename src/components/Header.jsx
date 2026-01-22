@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import LocationSearch from "./LocationSearch";
 import LoginModal from "../Pages/LoginModal.jsx";
 import { useNavigate } from "react-router-dom";
@@ -10,8 +10,9 @@ function Header({ hideLocationSearch = false }) {
   const navigate = useNavigate();
   // NAVBAR
   return (
-    <div className="sticky top-2 z-50  rounded-b-xl glassmorphism">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+    <div className="sticky top-2 z-50 rounded-b-xl glassmorphism relative overflow-hidden text-white">
+      <div className="absolute inset-0 bg-black/15 pointer-events-none"></div>
+      <div className="relative max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-10">
           <div className="flex items-center  cursor-pointer" onClick={() => navigate('/')}>
             <div className="text-green-600 font-extrabold text-2xl">PLAY</div>
@@ -100,7 +101,7 @@ function Header({ hideLocationSearch = false }) {
         <div>
           <div
             onClick={() => setShowLogin(true)}
-            className="text-sm flex items-center">
+            className="text-sm flex items-center cursor-pointer">
             <svg
               width="2rem"
               height="2rem"
