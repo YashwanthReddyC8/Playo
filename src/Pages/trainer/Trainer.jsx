@@ -29,7 +29,7 @@ export default function Trainer() {
             <div
                 id="homeData"
                 className="flex mx-4 p-4 md:p-0 flex-col md:mt-[52px] gap-6 md:gap-[52px]
-                   bg-white rounded-2xl xl:w-[1032px] md:mx-auto"
+                   bg-white rounded-2xl xl:w-[1032px] md:mx-auto shadow-[0_4px_12px_0_rgba(59,69,64,0.1)]"
             >
                 <div className="flex flex-col gap-[52px]">
                     <div className="flex flex-col gap-6 max-w-[926px] md:p-[52px] md:pb-0">

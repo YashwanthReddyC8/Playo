@@ -10,8 +10,8 @@ function Header({ hideLocationSearch = false }) {
   const navigate = useNavigate();
   // NAVBAR
   return (
-    <div className="sticky top-2 z-50 rounded-b-xl glassmorphism relative overflow-hidden text-white">
-      <div className="absolute inset-0 bg-black/15 pointer-events-none"></div>
+    <div className="sticky top-2 z-50 rounded-b-xl glassmorphism relative overflow-hidden text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+      <div className="absolute inset-0 bg-black/0.1 pointer-events-none"></div>
       <div className="relative max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-10">
           <div className="flex items-center  cursor-pointer" onClick={() => navigate('/')}>
