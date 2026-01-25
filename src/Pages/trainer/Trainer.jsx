@@ -9,12 +9,16 @@ import { useState } from "react";
 
 export default function Trainer() {
     const [isEnd, setIsEnd] = useState(false);
-    const [trainersToShow, setTrainersToShow] = useState(trainers.slice(0, 6));
+    const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+    window.addEventListener("resize", () => {
+        setIsMobileView(window.innerWidth < 768);
+    });
+    const [trainersToShow, setTrainersToShow] = useState(trainers.slice(0, (isMobileView ? 3 : 6)));
     const loadMoreTrainers = () => {
         const currentLength = trainersToShow.length;
         const isMore = currentLength < trainers.length;
         const nextResults = isMore
-            ? trainers.slice(currentLength, currentLength + 6)
+            ? trainers.slice(currentLength, currentLength + (isMobileView ? 3 : 6))
             : [];
         setTrainersToShow([...trainersToShow, ...nextResults]);
         setIsEnd(trainersToShow.length + nextResults.length >= trainers.length);

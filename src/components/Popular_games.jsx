@@ -15,25 +15,41 @@ function Popular_games() {
 
   return (
     <Section title="Popular Sports">
-      <div className="grid grid-cols-6 gap-4">
+      <div
+        className="
+        grid
+        grid-cols-2
+        sm:grid-cols-3
+        md:grid-cols-4
+        lg:grid-cols-6
+        gap-3 sm:gap-4
+      "
+      >
         {sports.map((s) => (
           <div
             key={s.name}
-            className="relative rounded-2xl overflow-hidden h-40 group cursor-pointer"
+            className="
+            relative rounded-2xl overflow-hidden
+            h-28 sm:h-32 md:h-36 lg:h-40
+            group cursor-pointer
+            active:scale-[0.97] transition-transform
+          "
           >
             <img
               src={s.img}
-              className="absolute inset-0 w-full h-full object-cover"
               alt={s.name}
+              className="absolute inset-0 w-full h-full object-cover"
             />
 
             <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition" />
 
-            <div className="
+            <div
+              className="
               absolute bottom-3 left-3
-              text-white font-semibold
+              text-white font-semibold text-sm sm:text-base
               group-hover:text-orange-400 transition
-            ">
+            "
+            >
               {s.name}
             </div>
           </div>

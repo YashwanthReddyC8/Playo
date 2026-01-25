@@ -11,17 +11,43 @@ function Home_book() {
 
   return (
     <Section title="Book Venues" action="SEE ALL VENUES">
-      <div className="grid grid-cols-4 gap-6">
+      <div
+        className="
+          grid
+          grid-cols-1
+          sm:grid-cols-2
+          md:grid-cols-3
+          lg:grid-cols-4
+          gap-4 sm:gap-6
+        "
+      >
         {venues.map((v) => (
           <div
             key={v.id}
-            className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg transition"
+            className="
+              bg-white rounded-2xl overflow-hidden
+              border border-gray-200
+              hover:shadow-lg transition
+              active:scale-[0.98]
+            "
           >
-            <img src={v.img} className="h-40 w-full object-cover" alt={v.name} />
+            <img
+              src={v.img}
+              alt={v.name}
+              className="
+                w-full object-cover
+                h-36 sm:h-40 md:h-44
+              "
+            />
 
             <div className="p-4">
-              <div className="font-semibold text-gray-900">{v.name}</div>
-              <div className="text-sm text-gray-500">{v.dist}</div>
+              <div className="font-semibold text-gray-900 truncate">
+                {v.name}
+              </div>
+
+              <div className="text-sm text-gray-500">
+                {v.dist}
+              </div>
 
               <div className="flex justify-between mt-2 text-sm">
                 <span className="text-green-600 font-semibold">

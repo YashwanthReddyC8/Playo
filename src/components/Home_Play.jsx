@@ -11,18 +11,29 @@ function Home_play() {
 
   return (
     <Section title="Discover Games" action="SEE ALL GAMES">
-      <div className="grid grid-cols-4 gap-6">
+      <div
+        className="
+        grid
+        grid-cols-1
+        sm:grid-cols-2
+        md:grid-cols-3
+        lg:grid-cols-4
+        gap-4 sm:gap-6
+      "
+      >
         {games.map((g) => (
           <div
             key={g.id}
             className="
-              bg-white rounded-2xl p-4
-              border border-gray-200
-              hover:border-green-500
-              hover:shadow-lg transition cursor-pointer
-            "
+            bg-white rounded-2xl p-4
+            border border-gray-200
+            hover:border-green-500
+            hover:shadow-lg transition
+            cursor-pointer
+            active:scale-[0.98]
+          "
           >
-            <div className="font-semibold text-gray-900 mb-1">
+            <div className="font-semibold text-gray-900 mb-1 truncate">
               {g.title}
             </div>
 
@@ -30,7 +41,7 @@ function Home_play() {
               {g.day} • {g.startTime} – {g.endTime}
             </div>
 
-            <div className="text-sm text-gray-400 mt-1">
+            <div className="text-sm text-gray-400 mt-1 truncate">
               {g.place}
             </div>
           </div>

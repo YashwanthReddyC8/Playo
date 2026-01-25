@@ -10,7 +10,7 @@ import Popular_games from "../components/Popular_games.jsx";
 function Home() {
   const [location, setLocation] = useState("");
   const target = useRef(null);
-  const rotatingText = "YOUR ONE STOP PLATFORM";
+  const rotatingText = "YOUR ONE STOP PLATFORM●";
   const characters = rotatingText.replace(/\s/g, " ").split("");
 
   const options = {
@@ -62,7 +62,7 @@ function Home() {
           <div className="md:w-3/5 relative flex items-center justify-center">
             {/* Circular Rotating Text */}
             <div className="absolute top-1/2 -left-10 -translate-y-1/2 z-20 pointer-events-none hidden md:block">
-              <div className="relative w-64 h-64 flex items-center justify-center animate-[spin_20s_linear_infinite]">
+              <div className="relative w-64 h-64 flex items-center justify-center animate-[spin_20s_linear_infinite_reverse]">
                 {characters.map((char, i) => (
                   <span
                     key={i}
