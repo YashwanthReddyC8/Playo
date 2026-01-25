@@ -83,18 +83,32 @@ export default function LocationSearch({ location, setLocation }) {
 
   return (
     <div className="relative w-[340px]">
-      <div className="flex items-center bg-gray-100 px-4 py-2 rounded-full text-sm ml-2" >
-        {/* <span className="mr-2">📍</span> */}
-        <img className="mr-1 img-small" src="https://cdn-icons-png.flaticon.com/512/9101/9101314.png " width="20" height="20" alt="" title=""></img>
+      <div className="
+      flex items-center
+      bg-gray-100 px-4 py-2 rounded-full
+      text-sm border border-gray-200
+      focus-within:border-green-500
+    ">
+        <img
+          className="mr-2"
+          src="https://cdn-icons-png.flaticon.com/512/9101/9101314.png"
+          width="18"
+          height="18"
+          alt="location"
+        />
+
         <input
           value={location}
           onChange={(e) => {
             setLocation(e.target.value);
             fetchSuggestions(e.target.value);
           }}
-          name="location"
           placeholder="Enter your location"
-          className="bg-transparent outline-none text-sm placeholder-gray-500 flex-1"
+          className="
+          bg-transparent outline-none
+          text-sm text-gray-800
+          placeholder-gray-500 flex-1
+        "
         />
 
         <button onClick={detectLocation} className="ml-2 text-lg bg-gray-100" style={{ backgroundColor: "#f3f4f6" }}>
@@ -102,9 +116,12 @@ export default function LocationSearch({ location, setLocation }) {
         </button>
       </div>
 
-      {/* Suggestions Dropdown */}
       {suggestions.length > 0 && (
-        <div className="absolute top-12 left-0 w-full bg-white shadow-xl rounded-xl overflow-hidden z-50">
+        <div className="
+        absolute top-12 left-0 w-full
+        bg-white shadow-xl rounded-xl
+        overflow-hidden z-50
+      ">
           {suggestions.map((s, i) => (
             <div
               key={i}
@@ -117,7 +134,12 @@ export default function LocationSearch({ location, setLocation }) {
                 );
                 setSuggestions([]);
               }}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+              className="
+              px-4 py-2 text-sm
+              text-gray-800
+              hover:bg-green-50
+              cursor-pointer
+            "
             >
               {s.placeName ||
                 s.place_address ||
