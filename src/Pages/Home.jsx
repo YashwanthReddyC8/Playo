@@ -6,13 +6,13 @@ import Home_book from "../components/Home_book.jsx";
 import useIsVisible from "../components/UseIsVisible.jsx";
 import Home_play from "../components/Home_Play.jsx";
 import Popular_games from "../components/Popular_games.jsx";
-// import LoginModal from "./LoginModal.jsx";
 
 function Home() {
   const [location, setLocation] = useState("");
-  // const [showLogin, setShowLogin] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
   const target = useRef(null);
+  const rotatingText = "YOUR ONE STOP PLATFORM●";
+  const characters = rotatingText.replace(/\s/g, " ").split("");
+
   const options = {
     enableHighAccuracy: true,
     timeout: 5000,
@@ -21,11 +21,8 @@ function Home() {
 
   function success(pos) {
     const crd = pos.coords;
-
-    console.log("Your current position is:");
-    console.log(`Latitude : ${crd.latitude}`);
+    console.log(`Latitude: ${crd.latitude}`);
     console.log(`Longitude: ${crd.longitude}`);
-    console.log(`More or less ${crd.accuracy} meters.`);
   }
 
   function error(err) {
@@ -33,66 +30,96 @@ function Home() {
   }
 
   navigator.geolocation.getCurrentPosition(success, error, options);
-  return (
-    <div>
-      {/* <div className="sticky top-2 z-50  rounded-b-xl glassmorphism"> */}
-      <Header hideLocationSearch={!useIsVisible(target)} />
-      {/* </div> */}
 
-      {/* Standard display */}
+  return (
+    <div className="bg-white text-gray-800">
+      <Header hideLocationSearch={!useIsVisible(target)} />
+
       {/* HERO */}
-      <div >
-        <div className="max-w-7xl mx-auto grid grid-cols-2 gap-8 px-6 py-12 items-center">
-          <div>
-            <div ref={target} className="flex justify-center">
-              <LocationSearch
-                location={location}
-                setLocation={setLocation}
-                className="ml-2"
-              />
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <div className="flex flex-col md:flex-row items-center gap-16">
+          {/* LEFT */}
+          <div className="md:w-2/5 text-center md:text-left">
+            <div ref={target} className="flex justify-center md:justify-start mb-6">
+              <LocationSearch location={location} setLocation={setLocation} />
             </div>
 
-            <h1 className="text-4xl font-extrabold leading-tight my-4 text-gray-900">
-              {/* text-black"> */}
-              BOOK SPORTS VENUES.
+            <h1 className="text-4xl font-extrabold leading-tight mb-4 text-gray-900">
+              <span className="text-green-600">BOOK</span> SPORTS VENUES.
               <br />
-              JOIN GAMES.
+              <span className="text-green-600">JOIN</span> GAMES.
               <br />
-              FIND TRAINERS NEAR YOU.
+              <span className="text-green-600">FIND</span> TRAINERS NEAR YOU.
             </h1>
-            <p className="text-gray-600 max-w-md justify-center">
-              The World's Largest Sports Community to Book Venues, Find
-              Trainers, and Join Games Near You.
+
+            <p className="text-gray-600 max-w-md mx-auto md:mx-0">
+              The world’s largest sports community to book venues,
+              find trainers, and join games near you.
             </p>
           </div>
-          <div className="grid grid-cols-2 grid-rows-2 gap-4">
-            <img
-              className="rounded-2xl object-cover h-40 w-full"
-              src="https://images.unsplash.com/photo-1521412644187-c49fa049e84d?w=800"
-            />
-            <img
-              className="rounded-2xl object-cover h-40 w-full"
-              src="https://playo-website.gumlet.io/playo-website-v3/hero/hero_right_top.png?q=50"
-            />
-            <img
-              className="rounded-2xl object-cover h-40 w-full"
-              src="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800"
-            />
-            <img
-              className="rounded-2xl object-cover h-40 w-full"
-              src="https://playo-website.gumlet.io/playo-website-v3/hero/hero_right_bottom.png?q=50"
-            />
+
+          {/* RIGHT COLLAGE */}
+          <div className="md:w-3/5 relative flex items-center justify-center">
+            {/* Circular Rotating Text */}
+            <div className="absolute top-1/2 -left-10 -translate-y-1/2 z-20 pointer-events-none hidden md:block">
+              <div className="relative w-64 h-64 flex items-center justify-center animate-[spin_20s_linear_infinite_reverse]">
+                {characters.map((char, i) => (
+                  <span
+                    key={i}
+                    className="absolute text-[10px] font-bold uppercase h-32 origin-bottom"
+                    style={{
+                      transform: `rotate(${i * (360 / characters.length)}deg)`,
+                      bottom: "50%",
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Collage */}
+            <div className="relative flex w-full max-w-[850px] items-center">
+              <div className="w-1/2 pr-1">
+                <img
+                  src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/576a692d-63cb-4eaf-94d7-5c87cf4e449a-playo-co/assets/images/hero_left-3.png"
+                  className="w-full object-contain"
+                />
+              </div>
+
+              <div className="w-1/2 flex flex-col gap-1 relative">
+                <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-[30%] z-30">
+                  <img
+                    src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/576a692d-63cb-4eaf-94d7-5c87cf4e449a-playo-co/assets/images/hero_playo_logo-4.png"
+                    className="w-full drop-shadow-lg"
+                  />
+                </div>
+
+                <img
+                  src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/576a692d-63cb-4eaf-94d7-5c87cf4e449a-playo-co/assets/images/hero_right_top-5.png"
+                  className="w-full object-contain"
+                />
+                <img
+                  src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/576a692d-63cb-4eaf-94d7-5c87cf4e449a-playo-co/assets/images/hero_right_bottom-6.png"
+                  className="w-full object-contain"
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div>
+      </section>
+
+
+      {/* SECTIONS */}
+      <section className="space-y-20">
         <Home_book />
         <Home_play />
         <Popular_games />
-      </div>
+      </section>
 
       <Footer />
     </div>
   );
 }
+
 export default Home;

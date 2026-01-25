@@ -5,11 +5,10 @@ export default function TrainerCard({ trainer, index }) {
             href={`/trainer/details/${trainer.slug}`}
             title={trainer.name}
             className="
-        rounded-2xl border border-[#e3e8e6] bg-white
-        overflow-hidden max-w-sm cursor-pointer
-        shadow-[0_4px_12px_0_rgba(59,69,64,0.1)]
-        h-full block
-      "
+                rounded-2xl border border-[#e3e8e6] bg-white
+                overflow-hidden w-full cursor-pointer
+                shadow-[0_4px_12px_0_rgba(59,69,64,0.1)]
+                h-full block active:scale-[0.98] transition-transform"
         >
             {/* ───────────────── HEADER (icons + rating) ───────────────── */}
             <div className="pb-6 flex justify-between items-center p-4">
@@ -43,7 +42,7 @@ export default function TrainerCard({ trainer, index }) {
 
                 {/* Rating / New */}
                 <div className="flex items-center">
-                    <div className="flex items-center px-2 py-1 bg-main text-white rounded-lg">
+                    <div className="flex items-center px-2 py-1 bg-green-600 text-white rounded-lg">
                         <span className="text-sm font-medium">
                             ★ {trainer.rating}
                         </span>
@@ -69,8 +68,11 @@ export default function TrainerCard({ trainer, index }) {
                                     src={img.src}
                                     alt={trainer.name}
                                     title={trainer.name}
-                                    className="max-w-[235px] aspect-[16/9]
-                             h-[132px] object-cover"
+                                    className="
+                                        w-[200px] sm:w-[235px]
+                                        h-[112px] sm:h-[132px]
+                                        aspect-[16/9]
+                                        object-cover"
                                 />
 
                                 {/* Label (Trainer / Academy) */}
@@ -78,10 +80,10 @@ export default function TrainerCard({ trainer, index }) {
                                     <div className="absolute w-full text-center bottom-1">
                                         <span
                                             className="
-                        text-sm w-[92px] bg-white
-                        px-2 py-1 rounded-md shadow-sm
-                        text-main font-semibold uppercase
-                      "
+                                                text-sm w-[92px] bg-white
+                                                px-2 py-1 rounded-md shadow-sm
+                                                text-main font-semibold uppercase
+                                            "
                                         >
                                             {img.label}
                                         </span>
@@ -93,12 +95,12 @@ export default function TrainerCard({ trainer, index }) {
                             {img.description && (
                                 <div
                                     className="
-                    text-sm bg-[#e1ffa3] font-medium
-                    rounded-md w-[235px] grow h-[132px]
-                    flex justify-center text-black
-                    px-4 py-6 items-center flex-wrap
-                    break-all overflow-hidden overflow-y-auto
-                  "
+                                        text-sm bg-[#e1ffa3] font-medium
+                                        rounded-md w-[200px] sm:w-[235px] h-[112px] sm:h-[132px]
+                                        flex justify-center text-black
+                                        px-4 py-6 items-center flex-wrap
+                                        break-all overflow-hidden overflow-y-auto
+                                    "
                                 >
                                     <div className="line-clamp-4">
                                         {img.description}
@@ -113,54 +115,42 @@ export default function TrainerCard({ trainer, index }) {
             {/* ───────────────── DETAILS ───────────────── */}
             <div className="px-4 flex flex-col gap-2">
                 {/* Name */}
-                <h2
-                    className="
-            md:text-xl text-main font-bold
-            truncate w-[95%] overflow-hidden text-left
-          "
-                >
+                <h2 className="md:text-xl text-gray-900 font-bold truncate">
                     {trainer.name}
                 </h2>
 
-                {/* Location */}
-                <div className="text-sm text-main font-medium truncate">
+                <div className="text-sm text-gray-500 font-medium truncate">
                     {trainer.location}
                 </div>
 
                 {/* Audience */}
                 <div className="flex flex-col w-full gap-6 mt-2">
-                    <div
-                        className="
-              text-xs md:text-base flex items-center
-              text-[#758a80] font-medium gap-2
-            "
-                    >
+                    <div className="text-sm flex items-center gap-2 text-gray-500">
                         <img
                             src="https://playo-website.gumlet.io/playo-website-v3/icons/trainer/kidsAdult.png"
                             alt={trainer.audience}
                             width="24"
                             height="24"
                         />
-                        <div className="text-main text-sm font-medium">
+                        <span className="text-gray-700 font-medium">
                             {trainer.audience}
-                        </div>
+                        </span>
                     </div>
+
 
                     {/* CTA */}
                     <div className="flex flex-col w-full gap-2">
                         <div
                             id={`${trainer.id}button`}
                             className="
-                bg-background py-3 px-4
-                shadow-[#d6dcd9] rounded-2xl
-                font-bold text-xs md:text-sm
-                leading-6 text-center tracking-wider
-                cursor-pointer w-full
-                shadow-[0_4px_0_0]
-                transition-all text-main
-                border border-[#e3e8e6]
-                uppercase
-              "
+                                bg-orange-400 text-white
+                                py-3 px-4 rounded-2xl
+                                font-bold text-xs md:text-sm
+                                text-center tracking-wider
+                                cursor-pointer w-full
+                                hover:bg-orange-500
+                                transition uppercase
+                            "
                         >
                             Instant Connect 🚀
                         </div>
