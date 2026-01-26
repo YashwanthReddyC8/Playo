@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 const KEY = import.meta.env.VITE_MAPPLS_KEY;
 
@@ -80,6 +80,10 @@ export default function LocationSearch({ location, setLocation }) {
       }
     );
   };
+
+  useEffect(()=>{
+    detectLocation();
+  },[detectLocation, !location])
 
   return (
     <div className="relative w-[340px]">

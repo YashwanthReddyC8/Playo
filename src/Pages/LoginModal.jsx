@@ -1,14 +1,53 @@
+import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import login_bg from "../assets/login_bg.png";
 import login_top from "../assets/login-top.png";
 
-export default function LoginModal({ isOpen, onClose }) {
+export default function LoginModal({ isOpen, onClose, onSuccess }) {
+  const [authMode, setAuthMode] = useState("login"); // login | signup
+  const [loginType, setLoginType] = useState("password"); // password | otp
+  const [step, setStep] = useState(1); 
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  // 1=email, 2=password/name, 3=otp verification
+
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    otp: "",
+    mobile: "",
+  });
+
+  // 🎨 Theme Colors
+  const theme = {
+    primary: "#00B562",
+    secondary: "#E5E7EB",
+    white: "#ffffff",
+    dark: "#111827",
+  };
+
   if (!isOpen) return null;
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const login = () => {
+    setIsLoggingIn(true);
+    localStorage.setItem("name", form.name);
+    localStorage.setItem("email", form.email);
+    localStorage.setItem("mobile", form.mobile);
+    localStorage.setItem("otp", form.otp);
+    setIsLoggingIn(false);
+    onClose();
+    form.image = `https://robohash.org/+${form?.name?.replaceAll(" ", "-")}`
+    onSuccess(form);
+  }
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-      {/* Modal Box */}
       <div className="bg-white w-[900px] h-[550px] rounded-2xl overflow-hidden flex relative">
+
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -26,49 +65,236 @@ export default function LoginModal({ isOpen, onClose }) {
           <img
             src={login_top}
             className="relative z-10 w-full h-full object-contain"
-            alt="overlay"
+            alt="login"
           />
         </div>
 
-        {/* Right Form Section */}
+        {/* Right Section */}
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Login / Sign Up</h2>
 
-          <label className="text-sm font-medium mb-2 text-gray-800">
-            Enter Email <span className="text-red-500">*</span>
-          </label>
+          <h2 className="text-2xl font-semibold mb-4">
+            {authMode === "login" ? "Sign In" : "Create Account"}
+          </h2>
 
-          <div className="flex gap-2 mb-4">
-            {/* <div className="border rounded-lg px-3 py-2 flex items-center gap-2">
-              🇮🇳 <span>+91</span>
-            </div> */}
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="border rounded-lg px-4 py-2 flex-1 outline-none focus:ring-2 focus:ring-green-500 text-gray-500"
-            />
-          </div>
+          {/* ================= TOGGLE LOGIN / SIGNUP ================= */}
+          <div className="flex mb-4 gap-2">
 
-          <button className="bg-gray-200 text-gray-500 py-3 rounded-lg cursor-not-allowed">
-            Send OTP
-          </button>
+            {step>1 && <div
+              onClick={() => {
+                setStep(step-1);
+              }}
+              style={{
+                backgroundColor: authMode === "login" ? theme.primary : theme.secondary,
+                color: authMode === "login" ? theme.white : theme.dark,
+              }}
+              className="flex-1 py-2 rounded-lg w-auto cursor-pointer"
+            >
+              &lt;
+            </div>}
+            
+            <button
+              onClick={() => {
+                setAuthMode("login");
+                setStep(1);
+              }}
+              style={{
+                backgroundColor: authMode === "login" ? theme.primary : theme.secondary,
+                color: authMode === "login" ? theme.white : theme.dark,
+              }}
+              className="flex-1 py-2 rounded-lg"
+            >
+              Sign In
+            </button>
 
-          <div className="text-center my-6 text-gray-400">Or</div>
-
-          <div className="flex gap-4">
-            {/* <button className="flex-1 border rounded-lg py-3 flex items-center justify-center gap-2 hover:bg-gray-50">
-              📧 Email Id
-            </button> */}
-
-            <button className="flex-1 border rounded-lg py-3 flex items-center justify-center gap-2 hover:bg-gray-50">
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
-                className="w-5"
-                alt="google"
-              />
-              Google
+            <button
+              onClick={() => {
+                setAuthMode("signup");
+                setStep(1);
+              }}
+              style={{
+                backgroundColor: authMode === "signup" ? theme.primary : theme.secondary,
+                color: authMode === "signup" ? theme.white : theme.dark,
+              }}
+              className="flex-1 py-2 rounded-lg"
+            >
+              Sign Up
             </button>
           </div>
+
+          {/* ================= STEP 1 EMAIL ================= */}
+          {step === 1 && (
+            <>
+              {/* <label>Email</label> */}
+              <input
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                className="border px-4 py-2 rounded-lg mb-4"
+                placeholder="Enter email"
+              />
+
+              {/* Login Type Toggle */}
+              {authMode === "login" ? (
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setLoginType("password")}
+                    style={{
+                      backgroundColor: loginType === "password" ? theme.primary : theme.secondary,
+                      color: loginType === "password" ? theme.white : theme.dark,
+                    }}
+                    className="flex-1 py-2 rounded-lg"
+                  >
+                    Password
+                  </button>
+
+                  <button
+                    onClick={() => setLoginType("otp")}
+                    style={{
+                      backgroundColor: loginType === "otp" ? theme.primary : theme.secondary,
+                      color: loginType === "otp" ? theme.white : theme.dark,
+                    }}
+                    className="flex-1 py-2 rounded-lg"
+                  >
+                    OTP
+                  </button>
+                </div>
+              ):
+              <input
+                name="mobile"
+                value={form.mobile}
+                onChange={handleChange}
+                className="border px-4 py-2 rounded-lg mb-4"
+                placeholder="Enter mobile number"
+                type="text"
+                maxLength={10}
+                minLength={10}
+              />
+              }
+
+              <button
+                onClick={() => setStep(2)}
+                style={{ backgroundColor: theme.primary, color: theme.white }}
+                className="py-3 rounded-lg"
+              >
+                Continue
+              </button>
+            </>
+          )}
+
+          {/* ================= LOGIN STEP 2 ================= */}
+          {step === 2 && authMode === "login" && (
+            <>
+              {loginType === "password" && (
+                <>
+                  <input
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    type="password"
+                    placeholder="Password"
+                    className="border px-4 py-2 rounded-lg mb-3"
+                  />
+
+                  <div
+                    onClick={login}
+                    style={{ backgroundColor: theme.primary, color: theme.white }}
+                    className="py-3 rounded-lg"
+                  >
+                    Login
+                  </div>
+                </>
+              )}
+
+              {loginType === "otp" && (
+                <>
+                  <button
+                    style={{ backgroundColor: theme.primary, color: theme.white }}
+                    className="py-3 rounded-lg mb-3"
+                  >
+                    Send OTP
+                  </button>
+
+                  <input
+                    name="otp"
+                    value={form.otp}
+                    onChange={handleChange}
+                    placeholder="Enter OTP"
+                    className="border px-4 py-2 rounded-lg mb-3"
+                  />
+
+                  <button
+                    style={{ backgroundColor: theme.primary, color: theme.white }}
+                    className="py-3 rounded-lg"
+                  >
+                    Verify & Login
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          {/* ================= SIGNUP STEP 2 (NAME + PASSWORD) ================= */}
+          {step === 2 && authMode === "signup" && (
+            <>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Full Name"
+                className="border px-4 py-2 rounded-lg mb-3"
+              />
+
+              <input
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                type="password"
+                placeholder="Create Password"
+                className="border px-4 py-2 rounded-lg mb-3"
+              />
+
+              <button
+                onClick={() => setStep(3)}
+                style={{ backgroundColor: theme.primary, color: theme.white }}
+                className="py-3 rounded-lg"
+                disabled={isLoggingIn}
+              >
+                { isLoggingIn ?  <>Logging in..</> : <>Continue to Verify Email</> }
+              </button>
+            </>
+          )}
+
+          {/* ================= SIGNUP STEP 3 (MANDATORY OTP) ================= */}
+          {step === 3 && authMode === "signup" && (
+            <>
+              <p className="text-sm text-gray-500 mb-2">
+                Verify your email with OTP
+              </p>
+
+              <button
+                style={{ backgroundColor: theme.primary, color: theme.white }}
+                className="py-3 rounded-lg mb-3"
+              >
+                Send OTP
+              </button>
+
+              <input
+                name="otp"
+                value={form.otp}
+                onChange={handleChange}
+                placeholder="Enter OTP"
+                className="border px-4 py-2 rounded-lg mb-3"
+              />
+
+              <button
+                onClick={login}
+                style={{ backgroundColor: theme.primary, color: theme.white }}
+                className="py-3 rounded-lg font-semibold"
+              >
+                Verify & Create Account
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>,
