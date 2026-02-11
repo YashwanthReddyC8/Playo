@@ -1,0 +1,15 @@
+services:
+  server:
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    develop:
+      watch:
+        - path: pom.xml
+          action: rebuild
+        - path: src
+          target: /app/src
+          action: sync

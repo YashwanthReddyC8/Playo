@@ -7,8 +7,8 @@ export default function ProfileModal({ isOpen, onClose, user }) {
   const logout = () => {
     localStorage.removeItem("name");
     localStorage.removeItem("email");
-    localStorage.removeItem("mobile");
-    localStorage.removeItem("otp");
+    localStorage.removeItem("spj");
+    localStorage.removeItem("image");
     window.location.reload();
   }
   return ReactDOM.createPortal(

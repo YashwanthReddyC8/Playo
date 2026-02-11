@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 
 const KEY = import.meta.env.VITE_MAPPLS_KEY;
 
@@ -43,7 +43,7 @@ export default function LocationSearch({ location, setLocation }) {
   };
 
   // 📍 GPS DETECT
-  const detectLocation = () => {
+  const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
       alert("GPS not supported");
       return;
@@ -79,11 +79,15 @@ export default function LocationSearch({ location, setLocation }) {
         setLoading(false);
       }
     );
-  };
+  }, [KEY]);
 
-  useEffect(()=>{
-    detectLocation();
-  },[detectLocation, !location])
+  useEffect(() => {
+    if (!location) {
+      detectLocation();
+    }
+    console.log("Location changed:", location);
+  }, [location, detectLocation, KEY]);
+
 
   return (
     <div className="relative w-[340px]">

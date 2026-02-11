@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import login_bg from "../assets/login_bg.png";
 import login_top from "../assets/login-top.png";
+import axiosInstance from "../api/axios";
 
 export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const [authMode, setAuthMode] = useState("login"); // login | signup
   const [loginType, setLoginType] = useState("password"); // password | otp
-  const [step, setStep] = useState(1); 
+  const [step, setStep] = useState(1);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   // 1=email, 2=password/name, 3=otp verification
 
@@ -32,17 +33,66 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const login = () => {
-    setIsLoggingIn(true);
-    localStorage.setItem("name", form.name);
-    localStorage.setItem("email", form.email);
-    localStorage.setItem("mobile", form.mobile);
-    localStorage.setItem("otp", form.otp);
-    setIsLoggingIn(false);
-    onClose();
-    form.image = `https://robohash.org/+${form?.name?.replaceAll(" ", "-")}`
-    onSuccess(form);
-  }
+  const login = async () => {
+    try {
+      setIsLoggingIn(true);
+
+      const res = await axiosInstance.post("/api/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
+
+      const userData = {
+        name: res.data.user?.name,
+        email: res.data.user?.email,
+        mobile: res.data.user?.phone,
+        image: res.data.user?.profileLink !== undefined ? res.data.user.profileLink : `https://robohash.org/${res.data.user?.name?.replaceAll(" ", "-")}`,
+      };
+
+      localStorage.setItem("email", userData.email);
+      localStorage.setItem("name", userData.name);
+      localStorage.setItem("image", userData.image);
+      localStorage.setItem("spj", res.data.token);
+      console.log("User logged in:", userData);
+      onSuccess(userData);
+      onClose();
+
+    } catch (err) {
+      console.error("Login failed:", err);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const signup = async () => {
+    try {
+      setIsLoggingIn(true);
+
+      const res = await axiosInstance.post("/api/auth/register", {
+        name: form.name,
+        email: form.email,
+        phone: form.mobile,
+        password: form.password,
+      });
+
+      const userData = {
+        ...form,
+        image: `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`
+      };
+
+      localStorage.setItem("name", form.name);
+      localStorage.setItem("email", form.email);
+      localStorage.setItem("spj", res.data.token);
+
+      onSuccess(userData);
+      onClose();
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
@@ -79,9 +129,9 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
           {/* ================= TOGGLE LOGIN / SIGNUP ================= */}
           <div className="flex mb-4 gap-2">
 
-            {step>1 && <div
+            {step > 1 && <div
               onClick={() => {
-                setStep(step-1);
+                setStep(step - 1);
               }}
               style={{
                 backgroundColor: authMode === "login" ? theme.primary : theme.secondary,
@@ -91,7 +141,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
             >
               &lt;
             </div>}
-            
+
             <button
               onClick={() => {
                 setAuthMode("login");
@@ -158,17 +208,17 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     OTP
                   </button>
                 </div>
-              ):
-              <input
-                name="mobile"
-                value={form.mobile}
-                onChange={handleChange}
-                className="border px-4 py-2 rounded-lg mb-4"
-                placeholder="Enter mobile number"
-                type="text"
-                maxLength={10}
-                minLength={10}
-              />
+              ) :
+                <input
+                  name="mobile"
+                  value={form.mobile}
+                  onChange={handleChange}
+                  className="border px-4 py-2 rounded-lg mb-4"
+                  placeholder="Enter mobile number"
+                  type="text"
+                  maxLength={10}
+                  minLength={10}
+                />
               }
 
               <button
@@ -198,9 +248,10 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                   <div
                     onClick={login}
                     style={{ backgroundColor: theme.primary, color: theme.white }}
-                    className="py-3 rounded-lg"
+                    className="cursor-pointer py-3 rounded-lg"
+                    disabled={isLoggingIn}
                   >
-                    Login
+                    {isLoggingIn ? "Logging in..." : "Login"}
                   </div>
                 </>
               )}
@@ -259,7 +310,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                 className="py-3 rounded-lg"
                 disabled={isLoggingIn}
               >
-                { isLoggingIn ?  <>Logging in..</> : <>Continue to Verify Email</> }
+                {isLoggingIn ? <>Logging in..</> : <>Continue to Verify Email</>}
               </button>
             </>
           )}
@@ -287,11 +338,12 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               />
 
               <button
-                onClick={login}
+                onClick={signup}
                 style={{ backgroundColor: theme.primary, color: theme.white }}
                 className="py-3 rounded-lg font-semibold"
+                disabled={isLoggingIn}
               >
-                Verify & Create Account
+                {isLoggingIn ? "Verifying... and Creating Account" : "Verify & Create Account"}
               </button>
             </>
           )}
