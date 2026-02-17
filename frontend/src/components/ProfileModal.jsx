@@ -29,7 +29,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
 
       try {
         const res = await axiosInstance.post(
-          "/api/upload/profile",
+          "/api/auth/profile-image",
           formData
         );
 
@@ -75,7 +75,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
 
       try {
         const res = await axiosInstance.post(
-          "/api/upload/profile",
+          "/api/auth/profile-image",
           formData,
           {
             onUploadProgress: (progressEvent) => {

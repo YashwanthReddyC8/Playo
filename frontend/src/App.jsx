@@ -5,15 +5,14 @@ import "./app.css";
 import Trainers from "./Pages/trainer/Trainer";
 import Play from "./Pages/play/Play";
 import Book from "./Pages/book/Book";
-import VenueDetails from "./pages/book/venues/VenueDetails";
-import CoachingDetails from "./pages/book/coaching/CoachingDetails";
-import EventDetails from "./pages/book/events/EventDetails";
-import MembershipDetails from "./pages/book/memberships/MembershipDetails";
+import VenueDetails from "./Pages/book/venues/VenueDetails";
+import CoachingDetails from "./Pages/book/coaching/CoachingDetails";
+import EventDetails from "./Pages/book/events/EventDetails";
+import MembershipDetails from "./Pages/book/memberships/MembershipDetails";
 
 function App() {
   return (
     <>
-      {/* <BrowserRouter> */}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/games" element={<Play />} />
@@ -24,7 +23,6 @@ function App() {
         <Route path="/venues/event/:id" element={<EventDetails />} />
         <Route path="/venues/membership/:id" element={<MembershipDetails />} />
       </Routes>
-      {/* </BrowserRouter> */}
     </>
   );
 }

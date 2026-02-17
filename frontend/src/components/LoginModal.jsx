@@ -54,6 +54,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
       localStorage.setItem("email", userData.email);
       localStorage.setItem("name", userData.name);
       localStorage.setItem("image", userData.image);
+      localStorage.setItem("mobile", userData.mobile || "");
       localStorage.setItem("spj", res.data.token);
       console.log("User logged in:", userData);
       onSuccess(userData);
@@ -77,13 +78,16 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
         password: form.password,
       });
 
+      const fallbackImage = `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`;
       const userData = {
         ...form,
-        image: `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`
+        image: res.data.user?.profileLink || fallbackImage,
       };
 
       localStorage.setItem("name", form.name);
       localStorage.setItem("email", form.email);
+      localStorage.setItem("mobile", form.mobile || "");
+      localStorage.setItem("image", userData.image);
       localStorage.setItem("spj", res.data.token);
 
       onSuccess(userData);
