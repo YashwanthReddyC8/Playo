@@ -266,7 +266,13 @@ function Header({ hideLocationSearch = false }) {
             }}
           />
 
-          <Profile isOpen={showProfile} onClose={() => setShowProfile(false)} user={user} />
+          <Profile
+            isOpen={showProfile}
+            onClose={() => {
+              setShowProfile(false);
+              setUser({ ...user, image: localStorage.getItem("image") })
+            }}
+            user={user} />
 
         </div>
       </div>
