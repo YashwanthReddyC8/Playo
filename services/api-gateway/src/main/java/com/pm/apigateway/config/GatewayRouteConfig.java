@@ -12,7 +12,7 @@ public class GatewayRouteConfig {
         return builder.routes()
                 // Auth Service Routes
                 .route("auth-server", r -> r
-                        .path("/api/auth/**")
+                        .path("/api/auth/**", "/api/update/profile")
                         .uri("lb://auth-server"))
 
                 // Admin Service Routes

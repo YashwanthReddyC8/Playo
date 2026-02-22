@@ -2,16 +2,15 @@ import React, { useEffect, useState } from "react";
 import LocationSearch from "./LocationSearch";
 import LoginModal from "./LoginModal.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
-import Profile from "../components/ProfileModal.jsx";
+import { useUser } from "../utils/userContext.jsx";
 
 
 function Header({ hideLocationSearch = false }) {
   const [location, setLocation] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState({ name: null, email: null, image: null, mobile: null });
+  const { user, updateUser } = useUser();
 
   const locationHook = useLocation();
   const navigate = useNavigate();
@@ -19,20 +18,12 @@ function Header({ hideLocationSearch = false }) {
   // Close mobile menu on route change temporarily disable login
   useEffect(() => {
     setMobileMenuOpen(false);
-    setShowProfile(false);
   }, [locationHook.pathname]);
 
   // Check login state
   useEffect(() => {
-    const name = localStorage.getItem("name");
-    const email = localStorage.getItem("email");
-    const image = localStorage.getItem("image");
-    const mobile = localStorage.getItem("mobile");
-    if (name && email && image) {
-      setIsLoggedIn(true);
-      setUser({ name, email, "image": image !== undefined ? image : `https://robohash.org/+${name.replaceAll(" ", "-")}`, mobile });
-    }
-  }, []);
+    setIsLoggedIn(!!user);
+  }, [user]);
 
   return (
     <div className="
@@ -140,7 +131,7 @@ function Header({ hideLocationSearch = false }) {
         <div className="flex items-center gap-2 text-sm font-semibold text-blue-500 hover:text-blue-600 cursor-pointer">
           <div
             onClick={() => {
-              isLoggedIn ? setShowProfile(true) : setShowLogin(true)
+              isLoggedIn ? navigate("/myprofile") : setShowLogin(true)
             }}
             className="text-sm flex items-center cursor-pointer">
             {isLoggedIn ?
@@ -222,7 +213,7 @@ function Header({ hideLocationSearch = false }) {
               <div className="flex flex-col px-6 py-4 gap-4 text-sm font-medium">
 
                 <div
-                  className="cursor-pointer"
+                  className="cursor-pointer p-0.5 hover:bg-gray-100"
                   onClick={() => {
                     navigate("/games");
                     setMobileMenuOpen(false);
@@ -232,7 +223,7 @@ function Header({ hideLocationSearch = false }) {
                 </div>
 
                 <div
-                  className="cursor-pointer"
+                  className="cursor-pointer p-0.5 hover:bg-gray-100"
                   onClick={() => {
                     navigate("/venues");
                     setMobileMenuOpen(false);
@@ -242,7 +233,7 @@ function Header({ hideLocationSearch = false }) {
                 </div>
 
                 <div
-                  className="cursor-pointer"
+                  className="cursor-pointer p-0.5 hover:bg-gray-100"
                   onClick={() => {
                     navigate("/trainer");
                     setMobileMenuOpen(false);
@@ -251,9 +242,30 @@ function Header({ hideLocationSearch = false }) {
                   Train
                 </div>
 
+                <div
+                  className="cursor-pointer p-0.5 hover:bg-gray-100"
+                  onClick={() => {
+                    navigate("/myprofile");
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Profile
+                </div>
+
+                <div
+                  className="cursor-pointer text-red-400 p-0.5 hover:bg-red-100 hover:text-red-500"
+                  onClick={() => {
+                    localStorage.removeItem("spj");
+                    localStorage.removeItem("user");
+                    window.location.reload();
+                  }}
+                >
+                  Logout
+                </div>
+
                 {/* Mobile Location Search */}
                 <div className="pt-2 hidden">
-                  <LocationSearch location={location} setLocation={setLocation} />
+                  {/* <LocationSearch location={location} setLocation={setLocation} /> */}
                 </div>
 
               </div>
@@ -261,19 +273,10 @@ function Header({ hideLocationSearch = false }) {
           )}
           <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)}
             onSuccess={(u) => {
+              updateUser(u);
               setIsLoggedIn(true);
-              setUser(u);
             }}
           />
-
-          <Profile
-            isOpen={showProfile}
-            onClose={() => {
-              setShowProfile(false);
-              setUser({ ...user, image: localStorage.getItem("image") })
-            }}
-            user={user} />
-
         </div>
       </div>
     </div>

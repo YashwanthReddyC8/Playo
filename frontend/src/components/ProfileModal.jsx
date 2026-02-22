@@ -89,7 +89,8 @@ export default function ProfileModal({ isOpen, onClose, user }) {
         );
         console.log("Uploaded image URL:", res);
         const imageUrl = res.data;
-        localStorage.setItem("image", imageUrl);
+        const updatedUser = { ...user, image: imageUrl };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
 
         setUploading(false);
         setImage(null);
@@ -119,10 +120,8 @@ export default function ProfileModal({ isOpen, onClose, user }) {
   };
   // console.log(user);
   const logout = () => {
-    localStorage.removeItem("name");
-    localStorage.removeItem("email");
     localStorage.removeItem("spj");
-    localStorage.removeItem("image");
+    localStorage.removeItem("user");
     window.location.reload();
   }
   return ReactDOM.createPortal(

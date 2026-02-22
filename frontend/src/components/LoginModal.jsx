@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import login_bg from "../assets/login_bg.png";
 import login_top from "../assets/login-top.png";
@@ -9,7 +9,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const [loginType, setLoginType] = useState("password"); // password | otp
   const [step, setStep] = useState(1);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  // 1=email, 2=password/name, 3=otp verification
+  const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
     name: "",
@@ -27,10 +27,53 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
     dark: "#111827",
   };
 
-  if (!isOpen) return null;
-
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // useEffect(() => {
+  //   setErrors({});
+  // }, [step, authMode, loginType]);
+
+  // 1=email, 2=password/name, 3=otp verification
+  const validateStep = () => {
+    const newErrors = {};
+
+    if (step === 1) {
+      if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) {
+        newErrors.email = "Valid email required";
+      }
+
+      if (authMode === "signup") {
+        if (!form.mobile || form.mobile.length !== 10) {
+          newErrors.mobile = "Valid 10 digit mobile required";
+        }
+      }
+    }
+
+    if (step === 2 && authMode === "login") {
+      if (loginType === "password") {
+        if (!form.password || form.password.length < 5) {
+          newErrors.password = "Password must be at least 5 characters";
+        }
+      }
+    }
+
+    if (step === 2 && authMode === "signup") {
+      if (!form.name) newErrors.name = "Name required";
+      if (!form.password || form.password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters";
+      }
+    }
+
+    if (step === 3 && authMode === "signup") {
+      if (!form.otp || form.otp.length !== 6) {
+        newErrors.otp = "Enter valid 6-digit OTP";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const login = async () => {
@@ -40,23 +83,26 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
       const res = await axiosInstance.post("/api/auth/login", {
         email: form.email,
         password: form.password,
+      }).catch((err) => {
+        if (err.response?.data?.message) {
+          setErrors({ api: err.response.data.message });
+        } else {
+          setErrors({ api: "Login failed. Please try again." });
+        }
       });
 
-      console.log("Login response:", res.data);
+      // console.log("Login response:", res.data);
 
       const userData = {
         name: res.data.user?.name,
         email: res.data.user?.email,
         mobile: res.data.user?.phone,
         image: (res.data.user?.profileLink !== null && res.data.user?.profileLink !== undefined) ? res.data.user.profileLink : `https://robohash.org/${res.data.user?.name?.replaceAll(" ", "-")}`,
+        spj: res.data.token,
       };
-
-      localStorage.setItem("email", userData.email);
-      localStorage.setItem("name", userData.name);
-      localStorage.setItem("image", userData.image);
-      localStorage.setItem("mobile", userData.mobile || "");
       localStorage.setItem("spj", res.data.token);
-      console.log("User logged in:", userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      // console.log("User logged in:", userData);
       onSuccess(userData);
       onClose();
 
@@ -76,6 +122,12 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
         email: form.email,
         phone: form.mobile,
         password: form.password,
+      }).catch((err) => {
+        if (err.response?.data?.message) {
+          setErrors({ api: err.response.data.message });
+        } else {
+          setErrors({ api: "Login failed. Please try again." });
+        }
       });
 
       const fallbackImage = `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`;
@@ -83,11 +135,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
         ...form,
         image: res.data.user?.profileLink || fallbackImage,
       };
-
-      localStorage.setItem("name", form.name);
-      localStorage.setItem("email", form.email);
-      localStorage.setItem("mobile", form.mobile || "");
-      localStorage.setItem("image", userData.image);
+      localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("spj", res.data.token);
 
       onSuccess(userData);
@@ -100,9 +148,9 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  return ReactDOM.createPortal(
+  return isOpen ? ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-      <div className="bg-white w-[900px] h-[550px] rounded-2xl overflow-hidden flex relative">
+      <div className="bg-white w-[900px] h-[550px] rounded-2xl overflow-hidden flex relative m-4">
 
         {/* Close Button */}
         <button
@@ -126,7 +174,50 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         {/* Right Section */}
-        <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
+        <form
+          className="w-full md:w-1/2 p-10 flex flex-col justify-center"
+          onSubmit={(e) => {
+            e.preventDefault();
+
+            if (!validateStep()) return;
+
+            // LOGIN FLOW
+            if (authMode === "login") {
+              if (step === 1) {
+                setStep(2);
+                return;
+              }
+
+              if (step === 2 && loginType === "password") {
+                login();
+                return;
+              }
+
+              if (step === 2 && loginType === "otp") {
+                // OTP login logic
+                return;
+              }
+            }
+
+            // SIGNUP FLOW
+            if (authMode === "signup") {
+              if (step === 1) {
+                setStep(2);
+                return;
+              }
+
+              if (step === 2) {
+                setStep(3);
+                return;
+              }
+
+              if (step === 3) {
+                signup();
+                return;
+              }
+            }
+          }}
+        >
 
           <h2 className="text-2xl font-semibold mb-4">
             {authMode === "login" ? "Sign In" : "Create Account"}
@@ -149,9 +240,12 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
             </div>}
 
             <button
+              type="button"
               onClick={() => {
                 setAuthMode("login");
+                setLoginType("password");
                 setStep(1);
+                setErrors({});
               }}
               style={{
                 backgroundColor: authMode === "login" ? theme.primary : theme.secondary,
@@ -163,9 +257,12 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 setAuthMode("signup");
+                setLoginType("password");
                 setStep(1);
+                setErrors({});
               }}
               style={{
                 backgroundColor: authMode === "signup" ? theme.primary : theme.secondary,
@@ -228,7 +325,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               }
 
               <button
-                onClick={() => setStep(2)}
+                type="submit"
                 style={{ backgroundColor: theme.primary, color: theme.white }}
                 className="py-3 rounded-lg"
               >
@@ -251,14 +348,14 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     className="border px-4 py-2 rounded-lg mb-3"
                   />
 
-                  <div
-                    onClick={login}
+                  <button
+                    type="submit"
                     style={{ backgroundColor: theme.primary, color: theme.white }}
                     className="cursor-pointer py-3 rounded-lg"
                     disabled={isLoggingIn}
                   >
                     {isLoggingIn ? "Logging in..." : "Login"}
-                  </div>
+                  </button>
                 </>
               )}
 
@@ -280,6 +377,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                   />
 
                   <button
+                    type="submit"
                     style={{ backgroundColor: theme.primary, color: theme.white }}
                     className="py-3 rounded-lg"
                   >
@@ -311,7 +409,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               />
 
               <button
-                onClick={() => setStep(3)}
+                type="submit"
                 style={{ backgroundColor: theme.primary, color: theme.white }}
                 className="py-3 rounded-lg"
                 disabled={isLoggingIn}
@@ -344,7 +442,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               />
 
               <button
-                onClick={signup}
+                type="submit"
                 style={{ backgroundColor: theme.primary, color: theme.white }}
                 className="py-3 rounded-lg font-semibold"
                 disabled={isLoggingIn}
@@ -353,9 +451,19 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               </button>
             </>
           )}
-        </div>
+          {errors && (
+            <>
+              <p className="text-red-500 text-sm mb-3">{errors.email}</p>
+              <p className="text-red-500 text-sm mb-3">{errors.password}</p>
+              <p className="text-red-500 text-sm mb-3">{errors.otp}</p>
+              <p className="text-red-500 text-sm mb-3">{errors.name}</p>
+              <p className="text-red-500 text-sm mb-3">{errors.mobile}</p>
+              <p className="text-red-500 text-sm mb-3">{errors.api}</p>
+            </>
+          )}
+        </form>
       </div>
-    </div>,
+    </div >,
     document.getElementById("modal-root")
-  );
+  ) : null;
 }

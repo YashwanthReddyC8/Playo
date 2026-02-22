@@ -1,4 +1,3 @@
-import Header from "../../components/Header";
 import GameFilters from "./GameFilters";
 import GamesGrid from "./GamesGrid";
 import Collections from "./Collections";
@@ -16,8 +15,6 @@ export default function Games() {
 
     return (
         <div className="bg-[#F2F5F2] min-h-screen">
-            <Header />
-
             <main
                 className="
                     max-w-[1440px]

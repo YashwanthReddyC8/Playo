@@ -3,7 +3,6 @@ import SportCategories from "./SportCategories";
 import Filters from "./Filters";
 import TrainerCard from "./TrainerCard";
 import { trainers } from "./data/trainers";
-import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import { useState } from "react";
 
@@ -28,7 +27,6 @@ export default function Trainer() {
             id="parent"
             className="flex flex-col gap-6 md:gap-[32px]"
         >
-            <Header />
             {/* TOP WHITE CARD */}
             <div
                 id="homeData"
