@@ -32,8 +32,8 @@ public class UpdateProfileController {
     private final Cloudinary cloudinary;
 
     @PostMapping("/profile")
-    public ResponseEntity<String> updateProfile(@RequestParam("file") MultipartFile file,
-            @RequestParam("name") String name) {
+    public ResponseEntity<String> updateProfile(@RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "name", required = false) String name) {
         try {
             // Get current user from Security Context
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -43,26 +43,31 @@ public class UpdateProfileController {
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            String imageUrl = user.getProfileLink() ;
             // Upload to Cloudinary
-            Map uploadResult = cloudinary.uploader().upload(
-                    file.getBytes(),
-                    ObjectUtils.asMap(
-                            "folder", "playo/profiles",
-                            "resource_type", "auto",
-                            "public_id", "profile_" + user.getId(),
-                            "overwrite", true));
+            if (file != null && !file.isEmpty()) {
+                Map uploadResult = cloudinary.uploader().upload(
+                        file.getBytes(),
+                        ObjectUtils.asMap(
+                                "folder", "playo/profiles",
+                                "resource_type", "auto",
+                                "public_id", "profile_" + user.getId(),
+                                "overwrite", true));
 
-            String imageUrl = (String) uploadResult.get("secure_url");
-            String publicId = (String) uploadResult.get("public_id");
+                imageUrl = (String) uploadResult.get("secure_url");
+                String publicId = (String) uploadResult.get("public_id");
 
-            // Save to user
-            user.setProfileLink(imageUrl);
-            user.setProfileId(publicId);
-            user.setName(name);
+                // Save to user
+                user.setProfileLink(imageUrl);
+                user.setProfileId(publicId);
+            }
+            // Update name
+            if (name != null && !name.isBlank()) {
+                user.setName(name);
+            }
             userRepository.save(user);
 
             return ResponseEntity.ok(imageUrl);
-
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to upload image: " + e.getMessage());

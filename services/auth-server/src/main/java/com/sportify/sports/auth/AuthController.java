@@ -9,6 +9,7 @@ import com.sportify.sports.repository.UserRepository;
 import com.sportify.sports.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -30,25 +31,21 @@ public class AuthController {
         @PostMapping("/register")
         public AuthResponse register(@RequestBody RegisterRequest request) {
 
-                // 1️⃣ Check if email already exists
                 if (userRepository.findByEmail(request.getEmail()).isPresent()) {
                         throw new RuntimeException("Email already registered");
                 }
 
-                // 2️⃣ Create user
                 User user = User.builder()
                                 .name(request.getName())
                                 .email(request.getEmail())
                                 .password(passwordEncoder.encode(request.getPassword()))
                                 .phone(request.getPhone())
-                                .role(Role.ADMIN) // default role
+                                .role(Role.ADMIN)
                                 .build();
 
-                // 3️⃣ Save to DB
                 userRepository.save(user);
 
-                // 4️⃣ Generate JWT
-                String token = jwtService.generateToken(user.getEmail());
+                String token = jwtService.generateToken(user.getEmail(), user.getName());
 
                 AuthResponse.UserDto userDto = new AuthResponse.UserDto(
                                 user.getName(),
@@ -61,27 +58,35 @@ public class AuthController {
         }
 
         @PostMapping("/login")
-        public AuthResponse login(@RequestBody AuthRequest request) {
-                System.out.println("DEBUG: Login request received for " + request.getEmail());
+        public ResponseEntity<?> login(
+                        @RequestBody AuthRequest request) {
+                try {
 
-                authManager.authenticate(
-                                new UsernamePasswordAuthenticationToken(
-                                                request.getEmail(),
-                                                request.getPassword()));
+                        authManager.authenticate(
+                                        new UsernamePasswordAuthenticationToken(
+                                                        request.getEmail(),
+                                                        request.getPassword()));
 
-                // fetch full user from DB
-                User user = userRepository.findByEmail(request.getEmail())
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                        User user = userRepository.findByEmail(request.getEmail())
+                                        .orElseThrow(() -> new RuntimeException("User not found"));
 
-                String token = jwtService.generateToken(user.getEmail());
+                        String token = jwtService.generateToken(user.getEmail(), user.getName());
 
-                AuthResponse.UserDto userDto = new AuthResponse.UserDto(
-                                user.getName(),
-                                user.getEmail(),
-                                user.getRole(),
-                                user.getProfileLink(),
-                                user.getPhone());
-                return new AuthResponse(token, userDto);
+                        AuthResponse.UserDto userDto = new AuthResponse.UserDto(
+                                        user.getName(),
+                                        user.getEmail(),
+                                        user.getRole(),
+                                        user.getProfileLink(),
+                                        user.getPhone());
+                        return ResponseEntity.ok(new AuthResponse(token, userDto));
+
+                } catch (Exception e) {
+                        throw new RuntimeException(e.getMessage());
+                }
         }
 
+        @PostMapping("/logout")
+        public ResponseEntity<?> logout() {
+                return ResponseEntity.ok("Logged out successfully");
+        }
 }

@@ -45,7 +45,7 @@ export default function LocationSearch({ location, setLocation }) {
   // 📍 GPS DETECT
   const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      alert("GPS not supported");
+      console.log("GPS not supported");
       return;
     }
 
@@ -69,13 +69,13 @@ export default function LocationSearch({ location, setLocation }) {
             setSuggestions([]);
           }
         } catch (e) {
-          alert("Reverse geocode failed");
+          console.log("Reverse geocode failed");
         }
 
         setLoading(false);
       },
       (err) => {
-        alert("GPS error: " + err.message);
+        console.log("GPS error: " + err.message);
         setLoading(false);
       }
     );

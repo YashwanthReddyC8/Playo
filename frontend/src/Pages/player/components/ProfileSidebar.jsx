@@ -3,6 +3,7 @@ import { useUser } from "../../../utils/userContext";
 
 export default function ProfileSidebar({ activeTab, setActiveTab }) {
     const { user } = useUser();
+    const { logout } = useUser();
     return (
         <div
             className="
@@ -55,9 +56,8 @@ export default function ProfileSidebar({ activeTab, setActiveTab }) {
                         label="Logout"
                         active={false}
                         onClick={() => {
-                            localStorage.removeItem("spj");
-                            localStorage.removeItem("user");
-                            window.location.reload();
+                            logout();
+                            navigate("/");
                         }}
                     />
 

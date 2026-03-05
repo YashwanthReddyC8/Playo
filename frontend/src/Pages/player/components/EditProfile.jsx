@@ -4,6 +4,7 @@ import AvatarEditor from "react-avatar-editor";
 import axiosInstance from "../../../api/axios";
 import { useUser } from "../../../utils/userContext";
 import { EditProfileSkeleton } from "./Skeletons";
+import toast from "react-hot-toast";
 
 export default function EditProfile() {
     const editorRef = useRef(null);
@@ -47,26 +48,40 @@ export default function EditProfile() {
         console.log("Selected file:", file);
         setImage(file);
     };
-    /* ---------------- Save ---------------- */
     const handleSave = async () => {
-        if (!editorRef.current) return;
+        const nameChanged =
+            form?.name?.trim() !== user?.name?.trim();
+
+        const imageChanged = !!editorRef.current;
+
+        if (!nameChanged && !imageChanged) return;
+
+        console.log("Saving profile with form data:", form);
 
         try {
             setUploading(true);
             setUploadError("");
 
-            const canvas = editorRef.current.getImageScaledToCanvas();
-            const blob = await new Promise(resolve =>
-                canvas.toBlob(resolve, "image/png")
-            );
+            const formData = new FormData();
 
-            if (!blob) {
-                throw new Error("Image processing failed");
+            // Only append name if changed
+            if (nameChanged) {
+                formData.append("name", form.name.trim());
             }
 
-            const formData = new FormData();
-            formData.append("file", blob, "profile.png");
-            formData.append("name", form.name);
+            // Only append image if changed
+            if (imageChanged) {
+                const canvas =
+                    editorRef.current.getImageScaledToCanvas();
+
+                const blob = await new Promise(resolve =>
+                    canvas.toBlob(resolve, "image/png")
+                );
+
+                if (!blob) throw new Error("Image processing failed");
+
+                formData.append("file", blob, "profile.png");
+            }
 
             const res = await axiosInstance.post(
                 "/api/update/profile",
@@ -75,25 +90,25 @@ export default function EditProfile() {
                     headers: { "Content-Type": "multipart/form-data" },
                     onUploadProgress: (e) => {
                         if (!e.total) return;
-                        setUploadProgress(
-                            Math.round((e.loaded * 100) / e.total)
-                        );
+                        setUploadProgress(Math.round((e.loaded * 100) / e.total));
                     },
                 }
             );
 
             const imageUrl = res.data;
 
-            const updatedUser = { ...user, image: imageUrl, name: form.name };
-            updateUser(updatedUser);
+            const updatedUser = {
+                ...user,
+                name: nameChanged ? form.name.trim() : user.name,
+                image: imageChanged ? imageUrl : user.image,
+            };
 
+            updateUser(updatedUser);
             setImage(null);
         } catch (err) {
-            setUploadError(
-                err.response?.data?.message ||
-                err.message ||
-                "Upload failed"
-            );
+            const msg = err.response?.data?.message || err.message || "Upload failed";
+            setUploadError(msg);
+            toast.error(msg);
         } finally {
             setUploading(false);
         }

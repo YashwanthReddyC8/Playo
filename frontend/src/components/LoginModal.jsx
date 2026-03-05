@@ -84,6 +84,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
         email: form.email,
         password: form.password,
       }).catch((err) => {
+        console.error("Login error:", err);
         if (err.response?.data?.message) {
           setErrors({ api: err.response.data.message });
         } else {
@@ -92,6 +93,10 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
       });
 
       // console.log("Login response:", res.data);
+      if (!res || !res.data || !res.data.token) {
+        setErrors({ api: "Login failed. Please try again." });
+        return;
+      }
 
       const userData = {
         name: res.data.user?.name,
