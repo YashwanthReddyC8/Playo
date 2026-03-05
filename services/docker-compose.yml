@@ -92,6 +92,42 @@ services:
         - path: ./admin-service/pom.xml
           action: rebuild
 
+  # Owner Service
+  owner-service:
+    build:
+      context: ./owner-service
+      dockerfile: Dockerfile
+    container_name: owner-service
+    ports:
+      - "8031:8031"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      SERVER_PORT: 8031
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka
+      EUREKA_HOSTNAME: owner-service
+    networks:
+      - playo-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8031/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    develop:
+      watch:
+        - path: ./owner-service/src
+          target: /app/src
+          action: sync
+        - path: ./owner-service/pom.xml
+          action: rebuild
+
   # API Gateway
   api-gateway:
     build:
