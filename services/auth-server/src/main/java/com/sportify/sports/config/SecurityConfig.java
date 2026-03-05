@@ -37,7 +37,6 @@ public class SecurityConfig {
                                                                 "/api/auth/login",
                                                                 "/api/auth/logout")
                                                 .permitAll()
-                                                .requestMatchers("/api/auth/profile-image").authenticated()
                                                 .requestMatchers("/error", "/health", "/actuator/health").permitAll()
                                                 .requestMatchers("/api/upload/**").authenticated()
                                                 .anyRequest().authenticated())

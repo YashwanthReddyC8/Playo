@@ -19,6 +19,25 @@ export const isSessionValid = (token, user) => {
     if (!payload || !payload.exp) return false;
     if (Date.now() >= payload.exp * 1000) return false;
 
-    const tokenUsername = payload.username || payload.sub;
-    return Boolean(tokenUsername) && tokenUsername === user.name;
+    const normalize = (value) => (value || "").toString().trim().toLowerCase();
+
+    const tokenIdentities = [
+        payload.sub,
+        payload.username,
+        payload.email,
+    ]
+        .map(normalize)
+        .filter(Boolean);
+
+    const userIdentities = [
+        user.email,
+        user.name,
+    ]
+        .map(normalize)
+        .filter(Boolean);
+
+    if (!tokenIdentities.length || !userIdentities.length) return false;
+    return tokenIdentities.some((tokenIdentity) =>
+        userIdentities.includes(tokenIdentity)
+    );
 };

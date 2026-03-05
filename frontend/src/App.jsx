@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Home from "./Pages/Home";
 import "./App.css";
 import Trainers from "./Pages/trainer/Trainer";
@@ -10,15 +9,14 @@ import CoachingDetails from "./Pages/book/coaching/CoachingDetails";
 import EventDetails from "./Pages/book/events/EventDetails";
 import MembershipDetails from "./Pages/book/memberships/MembershipDetails";
 import Player from "./Pages/player/Player";
+import Admin from "./Pages/admin/admin";
 import Layout from "./layouts/Layout";
-import ProtectedRoute from "./utils/ProtectedRoute";
+import { PlayerProtectedRoute, AdminProtectedRoute } from "./utils/ProtectedRoute";
 
 function App() {
   return (
     <Routes>
-      {/* Home */}
       <Route path="/" element={<Home />} />
-      {/* All layout pages */}
       <Route element={<Layout />}>
         <Route path="/games" element={<Play />} />
         <Route path="/venues" element={<Book />} />
@@ -27,11 +25,13 @@ function App() {
         <Route path="/venues/coaching/:id" element={<CoachingDetails />} />
         <Route path="/venues/event/:id" element={<EventDetails />} />
         <Route path="/venues/membership/:id" element={<MembershipDetails />} />
-        <Route element={<ProtectedRoute />}>
+        <Route element={<PlayerProtectedRoute />}>
           <Route path="/myprofile" element={<Player />} />
         </Route>
+        <Route element={<AdminProtectedRoute />}>
+          <Route path="/admin" element={<Admin />} />
+        </Route>
       </Route>
-
     </Routes>
   );
 }

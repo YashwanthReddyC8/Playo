@@ -275,6 +275,8 @@ function Header({ hideLocationSearch = false }) {
             onSuccess={(u) => {
               updateUser(u);
               setIsLoggedIn(true);
+              if (u.role === "USER") { navigate("/myprofile") }
+              if (u.role === "ADMIN") { navigate("/admin") }
             }}
           />
         </div>

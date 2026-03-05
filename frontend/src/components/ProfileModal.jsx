@@ -75,7 +75,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
 
       try {
         const res = await axiosInstance.post(
-          "/api/auth/profile-image",
+          "/api/update/profile",
           formData,
           {
             onUploadProgress: (progressEvent) => {
