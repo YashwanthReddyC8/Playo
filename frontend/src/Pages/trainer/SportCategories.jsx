@@ -11,10 +11,10 @@ export default function SportCategories() {
 
             <div
                 className="
-          grid grid-cols-3 gap-[14px]
-          md:gap-6 md:grid-cols-5 lg:grid-cols-6
-          justify-items-center items-center w-full
-        "
+                    grid grid-cols-3 gap-[14px]
+                    md:gap-6 md:grid-cols-5 lg:grid-cols-6
+                    justify-items-center items-center w-full
+                    "
             >
                 {sportsCategories.map((sport) => (
                     <a

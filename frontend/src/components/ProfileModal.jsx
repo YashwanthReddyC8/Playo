@@ -89,7 +89,8 @@ export default function ProfileModal({ isOpen, onClose, user }) {
         );
         console.log("Uploaded image URL:", res);
         const imageUrl = res.data;
-        localStorage.setItem("image", imageUrl);
+        const updatedUser = { ...user, image: imageUrl };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
 
         setUploading(false);
         setImage(null);
@@ -119,101 +120,99 @@ export default function ProfileModal({ isOpen, onClose, user }) {
   };
   // console.log(user);
   const logout = () => {
-    localStorage.removeItem("name");
-    localStorage.removeItem("email");
     localStorage.removeItem("spj");
-    localStorage.removeItem("image");
+    localStorage.removeItem("user");
     window.location.reload();
   }
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-      <div className="bg-white w-[450px] rounded-xl shadow-lg p-6 relative">
+      <div className="bg-white w-[480px] rounded-xl shadow-lg p-6 relative">
 
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-3 text-xl text-gray-500 hover:text-black"
-        >
-          ✕
-        </button>
-
-        <h2 className="text-xl font-semibold mb-4">My Profile</h2>
-
-        {/* Profile Image */}
-        <div className="flex items-center gap-4 mb-4">
-          {!image && <img
-            src={user?.image}
-            className="w-20 h-20 rounded-full border object-cover"
-            alt="profile"
-          />}
-          {/* <button className="px-3 py-1 border rounded-lg text-sm">
-            Change Photo
+        {/* ================= HEADER ================= */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">My Profile</h2>
+          <button
+            onClick={onClose}
+            className="text-xl text-gray-500 hover:text-black"
+          >
+            ✕
           </button>
-          <input className="px-3 py-1 border rounded-lg text-sm" name="Change Photo" type="file" accept="image/*" onChange={handleImageChange} /> */}
-          <label
-            className="
-              inline-flex items-center justify-center
-              px-3 py-1
-              border border-gray-300
-              rounded-lg
-              text-sm font-medium
-              cursor-pointer
-              bg-white
-              hover:bg-gray-100
-              active:scale-95
-              transition
-            "
-          >Change Photo
-            <input
-              type="file"
-              name="change profile photo"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-          </label>
-          {image && (<>
-            <AvatarEditor
-              ref={editorRef}
-              image={image}
-              width={200}
-              height={200}
-              border={50}
-              borderRadius={100}
-              scale={1.2}
-              rotate={0}
-              className=""
-            />
-            <button
-              onClick={handleSave}
-              disabled={uploading}
-              className="px-3 py-1 border rounded-lg text-sm disabled:opacity-50"
-            >
-              {uploading ? "Uploading..." : "Save"}
-            </button>
-            {uploading && (
-              <div className="w-full mt-3">
-                <div className="text-sm text-gray-600 mb-1">
-                  Uploading… {uploadProgress}%
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded">
-                  <div
-                    className="h-2 bg-blue-500 rounded transition-all"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            {uploadError && (
-              <p className="mt-2 text-sm text-red-600">
-                {uploadError}
-              </p>
-            )}
-          </>)}
         </div>
 
-        {/* User Info */}
-        <div className="space-y-3">
+        {/* ================= PROFILE IMAGE SECTION ================= */}
+        <div className="flex flex-col items-center gap-4 mb-6">
+
+          {/* Current Image */}
+          {!image && (
+            <img
+              src={user?.image}
+              className="w-24 h-24 rounded-full border object-cover"
+              alt="profile"
+            />
+          )}
+
+          {/* Change Photo Button */}
+          {!image && (
+            <label className="px-4 py-1 border border-gray-300 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-100 transition">
+              Change Photo
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
+          )}
+
+          {/* Image Editor Section */}
+          {image && (
+            <div className="flex flex-col items-center gap-3 w-full">
+
+              <AvatarEditor
+                ref={editorRef}
+                image={image}
+                width={200}
+                height={200}
+                border={40}
+                borderRadius={100}
+                scale={1.2}
+                rotate={0}
+              />
+
+              <button
+                onClick={handleSave}
+                disabled={uploading}
+                className="px-4 py-1 border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-green-500 text-white hover:bg-green-600 transition"
+              >
+                {uploading ? "Uploading..." : "Save"}
+              </button>
+
+              {/* Progress */}
+              {uploading && (
+                <div className="w-full">
+                  <div className="text-sm text-gray-600 mb-1 text-center">
+                    Uploading… {uploadProgress}%
+                  </div>
+                  <div className="w-full h-2 bg-gray-200 rounded">
+                    <div
+                      className="h-2 bg-blue-500 rounded transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {uploadError && (
+                <p className="text-sm text-red-600 text-center">
+                  {uploadError}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ================= USER INFO SECTION ================= */}
+        <div className="space-y-3 mb-6">
           <input
             className="border px-3 py-2 rounded-lg w-full"
             defaultValue={user?.name || "User Name"}
@@ -228,15 +227,17 @@ export default function ProfileModal({ isOpen, onClose, user }) {
           />
         </div>
 
-        {/* Logout Button */}
+        {/* ================= LOGOUT ================= */}
         <button
-          onClick={() => logout()}
-          className="mt-5 w-full py-2 bg-red-500 text-white rounded-lg"
+          onClick={logout}
+          className="w-full py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
         >
           Logout
         </button>
+
       </div>
-    </div>,
+    </div>
+    ,
     document.getElementById("modal-root")
   );
 }

@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:8080",
+    baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:8040",
+    withCredentials: false,
 });
 
 axiosInstance.interceptors.request.use((config) => {
@@ -11,5 +12,15 @@ axiosInstance.interceptors.request.use((config) => {
     }
     return config;
 });
+
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+            window.dispatchEvent(new CustomEvent("auth:expired"));
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default axiosInstance;
