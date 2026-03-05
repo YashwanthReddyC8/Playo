@@ -17,7 +17,7 @@ public class GatewayRouteConfig {
 
                 // Admin Service Routes
                 .route("admin-service", r -> r
-                        .path("/api/admin/**")
+                        .path("/api/admin/**", "/api/public/**")
                         .uri("lb://admin-service"))
 
                 // Booking Service Routes

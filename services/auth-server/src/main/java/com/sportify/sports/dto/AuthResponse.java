@@ -10,6 +10,10 @@ public class AuthResponse {
     private String token;
     private UserDto user;
 
+    public Role getRole() {
+        return user != null ? user.getRole() : null;
+    }
+
     @Getter
     @AllArgsConstructor
     public static class UserDto {

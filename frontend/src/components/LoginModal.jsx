@@ -101,6 +101,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
       const userData = {
         name: res.data.user?.name,
         email: res.data.user?.email,
+        role: res.data.role ?? res.data.user?.role,
         mobile: res.data.user?.phone,
         image: (res.data.user?.profileLink !== null && res.data.user?.profileLink !== undefined) ? res.data.user.profileLink : `https://robohash.org/${res.data.user?.name?.replaceAll(" ", "-")}`,
         spj: res.data.token,
@@ -137,7 +138,10 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
 
       const fallbackImage = `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`;
       const userData = {
-        ...form,
+        name: res.data.user?.name ?? form.name,
+        email: res.data.user?.email ?? form.email,
+        role: res.data.role ?? res.data.user?.role,
+        mobile: res.data.user?.phone ?? form.mobile,
         image: res.data.user?.profileLink || fallbackImage,
       };
       localStorage.setItem("user", JSON.stringify(userData));

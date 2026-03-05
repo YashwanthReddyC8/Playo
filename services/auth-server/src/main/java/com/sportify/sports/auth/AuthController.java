@@ -40,7 +40,7 @@ public class AuthController {
                                 .email(request.getEmail())
                                 .password(passwordEncoder.encode(request.getPassword()))
                                 .phone(request.getPhone())
-                                .role(Role.ADMIN)
+                                .role(Role.USER)
                                 .build();
 
                 userRepository.save(user);
