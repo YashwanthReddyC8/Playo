@@ -23,7 +23,13 @@ public record CenterApplicationResponse(
         String instagramUrl,
         String linkedInUrl,
         ApplicationStatus status,
+        String reviewNotes,
+        String reviewedBy,
+        Instant reviewedAt,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String deletedBy,
+        Instant deletedAt
 ) {
 }
+

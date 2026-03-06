@@ -75,6 +75,16 @@ public class SportsCenterApplication {
     @Column(nullable = false)
     private ApplicationStatus status;
 
+    private String reviewNotes;
+
+    private String reviewedBy;
+
+    private Instant reviewedAt;
+
+    private String deletedBy;
+
+    private Instant deletedAt;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

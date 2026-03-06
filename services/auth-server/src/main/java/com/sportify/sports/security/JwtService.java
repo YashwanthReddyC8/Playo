@@ -1,13 +1,17 @@
 package com.sportify.sports.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Service;
-
 import java.security.Key;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+
+import org.springframework.stereotype.Service;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
@@ -26,7 +30,7 @@ public class JwtService {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(Date.from(
-                        Instant.now().plus(3, ChronoUnit.MINUTES)   /* Token expires after 1 hours */
+                        Instant.now().plus(3, ChronoUnit.HOURS)   /* Token expires after 1 hours */
                 ));
         if (username != null && !username.isBlank()) {
             builder.claim("username", username);
