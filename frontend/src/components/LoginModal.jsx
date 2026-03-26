@@ -3,13 +3,18 @@ import ReactDOM from "react-dom";
 import login_bg from "../assets/login_bg.png";
 import login_top from "../assets/login-top.png";
 import axiosInstance from "../api/axios";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginModal({ isOpen, onClose, onSuccess }) {
-  const [authMode, setAuthMode] = useState("login"); // login | signup
+  const navigate = useNavigate();
+  const [authMode, setAuthMode] = useState("login"); // login | signup | forgot
   const [loginType, setLoginType] = useState("password"); // password | otp
   const [step, setStep] = useState(1);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errors, setErrors] = useState({});
+  const { login: zustandLogin, register: zustandRegister, forgotPassword } = useAuthStore();
 
   const [form, setForm] = useState({
     name: "",
@@ -30,10 +35,6 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-
-  // useEffect(() => {
-  //   setErrors({});
-  // }, [step, authMode, loginType]);
 
   // 1=email, 2=password/name, 3=otp verification
   const validateStep = () => {
@@ -79,35 +80,19 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const login = async () => {
     try {
       setIsLoggingIn(true);
+      setErrors({});
 
-      const res = await axiosInstance.post("/api/auth/login", {
-        email: form.email,
-        password: form.password,
-      }).catch((err) => {
-        if (err.response?.data?.message) {
-          setErrors({ api: err.response.data.message });
-        } else {
-          setErrors({ api: "Login failed. Please try again." });
-        }
-      });
+      const success = await zustandLogin(form.email, form.password);
 
-      // console.log("Login response:", res.data);
-
-      const userData = {
-        name: res.data.user?.name,
-        email: res.data.user?.email,
-        mobile: res.data.user?.phone,
-        image: (res.data.user?.profileLink !== null && res.data.user?.profileLink !== undefined) ? res.data.user.profileLink : `https://robohash.org/${res.data.user?.name?.replaceAll(" ", "-")}`,
-        spj: res.data.token,
-      };
-      localStorage.setItem("spj", res.data.token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      // console.log("User logged in:", userData);
-      onSuccess(userData);
-      onClose();
-
+      if (success) {
+        onSuccess();
+        onClose();
+      } else {
+        setErrors({ api: "Login failed. Please check your credentials." });
+      }
     } catch (err) {
       console.error("Login failed:", err);
+      setErrors({ api: "Login failed. Please try again." });
     } finally {
       setIsLoggingIn(false);
     }
@@ -116,33 +101,44 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const signup = async () => {
     try {
       setIsLoggingIn(true);
+      setErrors({});
 
-      const res = await axiosInstance.post("/api/auth/register", {
-        name: form.name,
-        email: form.email,
-        phone: form.mobile,
-        password: form.password,
-      }).catch((err) => {
-        if (err.response?.data?.message) {
-          setErrors({ api: err.response.data.message });
-        } else {
-          setErrors({ api: "Login failed. Please try again." });
-        }
-      });
+      const success = await zustandRegister(form.name, form.email, form.password, form.mobile);
 
-      const fallbackImage = `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`;
-      const userData = {
-        ...form,
-        image: res.data.user?.profileLink || fallbackImage,
-      };
-      localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("spj", res.data.token);
-
-      onSuccess(userData);
-      onClose();
-
+      if (success) {
+        onSuccess();
+        onClose();
+      } else {
+        setErrors({ api: "Registration failed. Please try again." });
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Signup failed:", err);
+      setErrors({ api: "Registration failed. Please try again." });
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    try {
+      setIsLoggingIn(true);
+      setErrors({});
+
+      const success = await forgotPassword(form.email);
+
+      if (success) {
+        toast.success("Redirect to forgot password page");
+        onClose();
+        navigate('/forgot-password');
+        setForm({ name: "", email: "", password: "", otp: "", mobile: "" });
+        setAuthMode("login");
+        setStep(1);
+      } else {
+        setErrors({ api: "Failed to send reset email." });
+      }
+    } catch (err) {
+      console.error("Forgot password failed:", err);
+      setErrors({ api: "Failed to send reset email." });
     } finally {
       setIsLoggingIn(false);
     }
@@ -347,6 +343,16 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     placeholder="Password"
                     className="border px-4 py-2 rounded-lg mb-3"
                   />
+
+                  <div className="text-right mb-4">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm text-green-600 hover:text-green-700 font-medium"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
 
                   <button
                     type="submit"

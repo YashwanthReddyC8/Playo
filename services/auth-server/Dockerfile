@@ -4,19 +4,19 @@ FROM eclipse-temurin:21-jdk-jammy
 
 WORKDIR /app
 
-# Copy Maven wrapper
-COPY --chmod=0755 mvnw mvnw
-COPY .mvn/ .mvn/
+# Copy common-models module
+COPY common-models /app/common-models
 
-# Copy pom first (for dependency cache)
-COPY pom.xml .
+# Copy auth-server module
+COPY auth-server /app/auth-server
 
+# Build both in a single RUN command with persistent cache
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw dependency:go-offline -DskipTests
+    cd /app/common-models && \
+    ./mvnw -q clean install -DskipTests && \
+    cd /app/auth-server && \
+    ./mvnw -q clean package -DskipTests
 
-# Copy source code
-COPY src src
+EXPOSE 8081
 
-EXPOSE 5000
-
-CMD ["./mvnw", "spring-boot:run"]
+CMD ["java", "-jar", "/app/auth-server/target/auth-server-0.0.1-SNAPSHOT.jar"]

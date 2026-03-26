@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import LocationSearch from "./LocationSearch";
 import LoginModal from "./LoginModal.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUser } from "../utils/userContext.jsx";
+import { useAuthStore } from "../stores/authStore.js";
+import { ChevronDown, LogOut, LayoutDashboard } from "lucide-react";
 
 
 function Header({ hideLocationSearch = false }) {
@@ -10,7 +11,8 @@ function Header({ hideLocationSearch = false }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, updateUser } = useUser();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, logout, isAuthenticated } = useAuthStore();
 
   const locationHook = useLocation();
   const navigate = useNavigate();
@@ -25,6 +27,14 @@ function Header({ hideLocationSearch = false }) {
     setIsLoggedIn(!!user);
   }, [user]);
 
+  const handleLoginSuccess = () => {
+    // Call initAuth to sync with localStorage
+    const { initAuth } = useAuthStore.getState();
+    initAuth();
+    setShowLogin(false);
+    window.location.reload(); // Reload to ensure all components sync
+  };
+
   return (
     <div className="
       sticky top-0 z-50 rounded-b-xl
@@ -32,6 +42,12 @@ function Header({ hideLocationSearch = false }) {
       border border-gray-200
       text-gray-800
     ">
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={handleLoginSuccess}
+      />
       {/* <div className="sticky top-2 z-50 rounded-b-xl glassmorphism relative overflow-hidden text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"> */}
       <div className="absolute inset-0 bg-black/0.1 pointer-events-none"></div>
       <div className="relative max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
@@ -95,7 +111,7 @@ function Header({ hideLocationSearch = false }) {
               </div>
               <span className="cursor-pointer font-black ml-1">Book</span>
             </div>
-            <div className="flex items-center px-3 py-1 rounded-full  cursor-pointer" onClick={() => navigate('/trainer')}>
+            <div className="flex items-center px-3 py-1 rounded-full  cursor-pointer" onClick={() => navigate('/trainers')}>
               <div className="text-green-600">
                 <svg
                   width="1.7rem"
@@ -128,48 +144,88 @@ function Header({ hideLocationSearch = false }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-blue-500 hover:text-blue-600 cursor-pointer">
-          <div
-            onClick={() => {
-              isLoggedIn ? navigate("/myprofile") : setShowLogin(true)
-            }}
-            className="text-sm flex items-center cursor-pointer">
-            {isLoggedIn ?
-              <>
+        <div className="flex items-center gap-4 text-sm font-semibold">
+          {isLoggedIn ? (
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
                 <img
-                  src={user?.image}
-                  className="w-9 h-9 mx-1 rounded-full border object-cover"
+                  src={user?.profileLink || `https://robohash.org/${user?.name?.replaceAll(' ', '-')}`}
+                  className="w-8 h-8 rounded-full object-cover"
                   alt="profile"
                 />
-                <span className="hidden text-xl md:block">
-                  {user?.name}
-                </span>
-              </>
-              :
-              <>
-                <svg
-                  width="2rem"
-                  height="2rem"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    opacity="0.2"
-                    d="M16.875 9.9364C16.876 10.8916 16.6737 11.8363 16.2813 12.7088C15.8889 13.5813 15.3152 14.362 14.5977 15C14.1662 14.1593 13.5083 13.4534 12.6968 12.9604C11.8854 12.4674 10.9519 12.2065 10 12.2068C10.5666 12.2068 11.1204 12.0403 11.5915 11.7285C12.0626 11.4166 12.4297 10.9734 12.6465 10.4548C12.8633 9.93628 12.9201 9.36567 12.8095 8.81516C12.699 8.26465 12.4262 7.75898 12.0256 7.36209C11.6249 6.96519 11.1145 6.6949 10.5589 6.5854C10.0032 6.4759 9.4272 6.5321 8.90377 6.7469C8.38034 6.96169 7.93295 7.32544 7.61819 7.79214C7.30342 8.25883 7.13542 8.80752 7.13542 9.36881C7.13542 10.1215 7.43722 10.8433 7.97443 11.3755C8.51165 11.9078 9.24026 12.2068 10 12.2068C9.04807 12.2065 8.11465 12.4674 7.30315 12.9604C6.49165 13.4534 5.83375 14.1593 5.40234 15C4.55031 14.2407 3.90337 13.2825 3.52036 12.2125C3.13734 11.1424 3.03039 9.9945 3.20924 8.87308C3.3881 7.75165 3.84707 6.69231 4.54444 5.79138C5.2418 4.89045 6.15542 4.17651 7.20223 3.71449C8.24904 3.25247 9.39583 3.05702 10.5383 3.14591C11.6808 3.23481 12.7827 3.60523 13.7439 4.22349C14.705 4.84175 15.495 5.68824 16.0418 6.68598C16.5886 7.68373 16.8751 8.80107 16.875 9.9364Z"
-                    fill="#43A047"
-                  ></path>
-                  <path
-                    d="M10 2.5C8.51664 2.5 7.06659 2.93987 5.83323 3.76398C4.59986 4.58809 3.63856 5.75943 3.07091 7.12987C2.50325 8.50032 2.35472 10.0083 2.64411 11.4632C2.9335 12.918 3.64781 14.2544 4.6967 15.3033C5.7456 16.3522 7.08197 17.0665 8.53682 17.3559C9.99168 17.6453 11.4997 17.4967 12.8701 16.9291C14.2406 16.3614 15.4119 15.4001 16.236 14.1668C17.0601 12.9334 17.5 11.4834 17.5 10C17.4979 8.01152 16.707 6.10509 15.301 4.69902C13.8949 3.29295 11.9885 2.5021 10 2.5ZM6.11154 15.012C6.5289 14.3593 7.10385 13.8221 7.78341 13.45C8.46296 13.078 9.22525 12.8829 10 12.8829C10.7748 12.8829 11.537 13.078 12.2166 13.45C12.8962 13.8221 13.4711 14.3593 13.8885 15.012C12.7767 15.8767 11.4084 16.3461 10 16.3461C8.59157 16.3461 7.22332 15.8767 6.11154 15.012ZM7.69231 9.42308C7.69231 8.96666 7.82765 8.52049 8.08123 8.14099C8.3348 7.76149 8.69521 7.46571 9.11689 7.29105C9.53856 7.11638 10.0026 7.07068 10.4502 7.15973C10.8979 7.24877 11.309 7.46855 11.6318 7.79129C11.9545 8.11403 12.1743 8.52522 12.2634 8.97287C12.3524 9.42052 12.3067 9.88451 12.132 10.3062C11.9574 10.7279 11.6616 11.0883 11.2821 11.3419C10.9026 11.5954 10.4564 11.7308 10 11.7308C9.38796 11.7308 8.80099 11.4876 8.36822 11.0549C7.93544 10.6221 7.69231 10.0351 7.69231 9.42308ZM14.7423 14.2123C14.0989 13.2799 13.1941 12.5585 12.1418 12.1389C12.7071 11.6937 13.1195 11.0834 13.3219 10.393C13.5242 9.70246 13.5063 8.96607 13.2707 8.28621C13.0351 7.60634 12.5935 7.01679 12.0074 6.59954C11.4212 6.18228 10.7195 5.95806 10 5.95806C9.28047 5.95806 8.57883 6.18228 7.99264 6.59954C7.40646 7.01679 6.96486 7.60634 6.72927 8.28621C6.49368 8.96607 6.47581 9.70246 6.67813 10.393C6.88046 11.0834 7.29292 11.6937 7.85818 12.1389C6.80588 12.5585 5.90113 13.2799 5.2577 14.2123C4.44464 13.298 3.91323 12.1681 3.72744 10.9588C3.54165 9.74944 3.70941 8.51218 4.21052 7.39598C4.71163 6.27979 5.52472 5.33224 6.55188 4.66745C7.57904 4.00266 8.77648 3.64898 10 3.64898C11.2235 3.64898 12.421 4.00266 13.4481 4.66745C14.4753 5.33224 15.2884 6.27979 15.7895 7.39598C16.2906 8.51218 16.4584 9.74944 16.2726 10.9588C16.0868 12.1681 15.5554 13.298 14.7423 14.2123Z"
-                    fill="#43A047"
-                  ></path>
-                </svg>
-                <span className="hidden md:block">
-                  Login / Signup
-                </span>
-              </>
-            }
-          </div>
+                <span className="hidden md:block text-gray-700">{user?.name}</span>
+                <ChevronDown className="w-4 h-4 text-gray-600" />
+              </button>
+
+              {/* User Dropdown Menu */}
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-40">
+                  {/* <div className="p-4 border-b">
+                    <p className="font-semibold text-gray-900">{user?.name}</p>
+                    <p className="text-sm text-gray-600">{user?.email}</p>
+                    <p className="text-xs text-green-600 mt-1">Role: {user?.role}</p>
+                  </div> */}
+
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        navigate("/myprofile");
+                        setUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                    >
+                      My Profile
+                    </button>
+
+                    {user?.role === 'ADMIN' && (
+                      <button
+                        onClick={() => {
+                          navigate("/admin-dashboard");
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        Admin Dashboard
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="border-t p-2">
+                    <button
+                      onClick={() => {
+                        logout();
+                        navigate('/');
+                        setUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowLogin(true)}
+                className="hidden md:block px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg font-medium"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => setShowLogin(true)}
+                className="hidden md:block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
           {/* MOBILE MENU */}
           <button
@@ -207,11 +263,11 @@ function Header({ hideLocationSearch = false }) {
               />
             </svg>
           </button>
+
           {/* MOBILE MENU DROPDOWN */}
           {mobileMenuOpen && (
             <div className="md:hidden absolute top-full left-0 w-full bg-white border-t border-gray-200 shadow-lg z-40">
               <div className="flex flex-col px-6 py-4 gap-4 text-sm font-medium">
-
                 <div
                   className="cursor-pointer p-0.5 hover:bg-gray-100"
                   onClick={() => {
@@ -235,48 +291,62 @@ function Header({ hideLocationSearch = false }) {
                 <div
                   className="cursor-pointer p-0.5 hover:bg-gray-100"
                   onClick={() => {
-                    navigate("/trainer");
+                    navigate("/trainers");
                     setMobileMenuOpen(false);
                   }}
                 >
                   Train
                 </div>
 
-                <div
-                  className="cursor-pointer p-0.5 hover:bg-gray-100"
-                  onClick={() => {
-                    navigate("/myprofile");
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  Profile
-                </div>
+                {isLoggedIn ? (
+                  <>
+                    <div className="border-t pt-4">
+                      <div className="cursor-pointer p-0.5 hover:bg-gray-100" onClick={() => {
+                        navigate("/myprofile");
+                        setMobileMenuOpen(false);
+                      }}>
+                        My Profile
+                      </div>
+                    </div>
 
-                <div
-                  className="cursor-pointer text-red-400 p-0.5 hover:bg-red-100 hover:text-red-500"
-                  onClick={() => {
-                    localStorage.removeItem("spj");
-                    localStorage.removeItem("user");
-                    window.location.reload();
-                  }}
-                >
-                  Logout
-                </div>
+                    {user?.role === 'ADMIN' && (
+                      <div className="cursor-pointer text-blue-600 p-0.5 hover:bg-blue-50" onClick={() => {
+                        navigate("/admin-dashboard");
+                        setMobileMenuOpen(false);
+                      }}>
+                        Admin Dashboard
+                      </div>
+                    )}
 
-                {/* Mobile Location Search */}
-                <div className="pt-2 hidden">
-                  {/* <LocationSearch location={location} setLocation={setLocation} /> */}
-                </div>
-
+                    <div className="cursor-pointer text-red-600 p-0.5 hover:bg-red-50" onClick={() => {
+                      logout();
+                      navigate('/');
+                      setMobileMenuOpen(false);
+                    }}>
+                      Logout
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="border-t pt-4 flex flex-col gap-2">
+                      <button onClick={() => {
+                        setShowLogin(true);
+                        setMobileMenuOpen(false);
+                      }} className="w-full px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg font-medium text-left">
+                        Login
+                      </button>
+                      <button onClick={() => {
+                        setShowLogin(true);
+                        setMobileMenuOpen(false);
+                      }} className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">
+                        Sign Up
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
-          <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)}
-            onSuccess={(u) => {
-              updateUser(u);
-              setIsLoggedIn(true);
-            }}
-          />
         </div>
       </div>
     </div>

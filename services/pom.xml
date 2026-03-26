@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.sportify</groupId>
+    <artifactId>playo-services</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>Playo Services</name>
+    <description>Root parent for all Playo microservices</description>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>common-models</module>
+        <module>auth-server</module>
+        <module>admin-service</module>
+        <module>api-gateway</module>
+        <module>eureka-server</module>
+        <module>owner-service</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+    </properties>
+</project>
