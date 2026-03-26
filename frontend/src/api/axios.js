@@ -1,9 +1,36 @@
 import axios from "axios";
 
+// Dynamically determine API URL based on current origin
+const getApiUrl = () => {
+    const configUrl = import.meta.env.VITE_BACKEND_URL;
+
+    // If running via port-forward/tunnel, map frontend URL to gateway URL
+    const currentOrigin = window.location.origin;
+
+    // Mapping forwarded domains
+    const forwardedMapping = {
+        'https://7l8584mh-5173.inc1.devtunnels.ms': 'https://7l8584mh-8040.inc1.devtunnels.ms',
+    };
+
+    // Check if current origin is in the mapping
+    if (forwardedMapping[currentOrigin]) {
+        return forwardedMapping[currentOrigin];
+    }
+
+    // Otherwise use configured URL or default to localhost
+    return configUrl || "http://localhost:8040";
+};
+
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:8040",
+    baseURL: getApiUrl(),
     withCredentials: false,
 });
+
+// Log API URL for debugging
+if (process.env.NODE_ENV === 'development') {
+    console.log(`[Axios] Using API base URL: ${axiosInstance.defaults.baseURL}`);
+    console.log(`[Axios] Current origin: ${window.location.origin}`);
+}
 
 // Sensitive fields that should never be logged
 const SENSITIVE_FIELDS = [
