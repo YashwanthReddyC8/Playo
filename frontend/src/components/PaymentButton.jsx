@@ -32,7 +32,7 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
 
     setLoading(true);
     const scriptLoaded = await loadRazorpayScript();
-    
+
     if (!scriptLoaded) {
       toast.error('Failed to load Razorpay SDK. Check your connection.');
       setLoading(false);
@@ -52,11 +52,11 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
       // 2. Open Razorpay Checkout
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SOigKGyllIr3HN',
-        amount: data.amount, 
+        amount: data.amount,
         currency: 'INR',
-        name: 'Playo Clone',
+        name: 'Sportify',
         description: `Booking for ${selectedDate} at ${selectedSlot}`,
-        order_id: data.orderId || data.razorpayOrderId, 
+        order_id: data.orderId || data.razorpayOrderId,
         handler: async function (response) {
           try {
             // 3. Verify Payment
@@ -65,7 +65,7 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
-            
+
             toast.success("Booking Confirmed! 🎉");
             // Navigate to profile or bookings page
             navigate("/myprofile");
@@ -95,8 +95,8 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
   };
 
   return (
-    <button 
-      onClick={handleBookingClick} 
+    <button
+      onClick={handleBookingClick}
       disabled={loading || !selectedDate || !selectedSlot}
       className={`w-full py-4 text-lg rounded-xl font-bold text-white transition-all
         ${(loading || !selectedDate || !selectedSlot) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-green-500/30'}`}
