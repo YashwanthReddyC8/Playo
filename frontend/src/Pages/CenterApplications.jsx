@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 export default function CenterApplications() {
     const navigate = useNavigate();
-    const { user, logout } = useAuthStore();
+    const { user, logout, isInitialized } = useAuthStore();
     const {
         applications,
         totalPages,
@@ -26,13 +26,15 @@ export default function CenterApplications() {
     const [reviewNotes, setReviewNotes] = useState('');
     const [pageSize] = useState(10);
 
-    // Check if user is admin
+    // Check if user is admin - wait for auth to be initialized
     useEffect(() => {
+        if (!isInitialized) return; // Wait for initialization
+
         if (user?.role !== 'ADMIN') {
             navigate('/');
             toast.error('Access denied. Admin only.');
         }
-    }, [user, navigate]);
+    }, [user, navigate, isInitialized]);
 
     // Load applications on mount and when filters/page changes
     useEffect(() => {
@@ -134,8 +136,8 @@ export default function CenterApplications() {
                                 key={status}
                                 onClick={() => setStatusFilter(status)}
                                 className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${statusFilter === status
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 {status}
@@ -204,8 +206,8 @@ export default function CenterApplications() {
                                                             onClick={() => openApprovalModal(app, 'approve')}
                                                             disabled={app.status?.toUpperCase() === 'APPROVED'}
                                                             className={`px-3 py-1 rounded text-sm font-medium ${app.status?.toUpperCase() === 'APPROVED'
-                                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-green-100 text-green-700 hover:bg-green-200'
                                                                 }`}
                                                         >
                                                             Approve
@@ -214,8 +216,8 @@ export default function CenterApplications() {
                                                             onClick={() => openApprovalModal(app, 'reject')}
                                                             disabled={app.status?.toUpperCase() === 'REJECTED'}
                                                             className={`px-3 py-1 rounded text-sm font-medium ${app.status?.toUpperCase() === 'REJECTED'
-                                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-red-100 text-red-700 hover:bg-red-200'
                                                                 }`}
                                                         >
                                                             Reject
@@ -292,8 +294,8 @@ export default function CenterApplications() {
                             <button
                                 onClick={handleApproval}
                                 className={`flex-1 px-4 py-2 text-white rounded-lg ${modalAction === 'approve'
-                                        ? 'bg-green-600 hover:bg-green-700'
-                                        : 'bg-red-600 hover:bg-red-700'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-red-600 hover:bg-red-700'
                                     }`}
                             >
                                 {modalAction === 'approve' ? 'Approve' : 'Reject'}

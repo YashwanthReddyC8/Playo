@@ -1,77 +1,188 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Phone, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import axiosInstance from '../api/axios';
 
 export default function Register() {
     const navigate = useNavigate();
-    const { register, isLoading, error } = useAuthStore();
+    const [step, setStep] = useState(1); // For OTP flow: 1 = form, 2 = otp verification
+    const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [validationErrors, setValidationErrors] = useState({});
+
+    // Form data for initial registration
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
         password: '',
     });
-    const [validationErrors, setValidationErrors] = useState({});
 
-    const validateForm = () => {
+    // OTP verification data
+    const [otp, setOtp] = useState('');
+    const [otpEmail, setOtpEmail] = useState('');
+
+    // Validation function
+    const validate = (data = formData) => {
         const errors = {};
-        if (!formData.name || formData.name.length < 2) {
-            errors.name = 'Name must be at least 2 characters';
+
+        if (!data.name?.trim()) {
+            errors.name = 'Name is required';
         }
-        if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
-            errors.email = 'Valid email is required';
+
+        if (!data.email?.trim()) {
+            errors.email = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+            errors.email = 'Invalid email address';
         }
-        if (!formData.phone || formData.phone.length !== 10 || !/^\d+$/.test(formData.phone)) {
-            errors.phone = 'Valid 10-digit phone number is required';
+
+        if (!data.phone?.trim()) {
+            errors.phone = 'Phone number is required';
+        } else if (!/^\d{10}$/.test(data.phone)) {
+            errors.phone = 'Phone must be 10 digits';
         }
-        if (!formData.password || formData.password.length < 6) {
+
+        if (!data.password?.trim()) {
+            errors.password = 'Password is required';
+        } else if (data.password.length < 6) {
             errors.password = 'Password must be at least 6 characters';
         }
-        return errors;
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
     };
 
+    // Handle form field changes
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             [name]: value,
         }));
+        // Clear validation error for this field
+        if (validationErrors[name]) {
+            setValidationErrors((prev) => ({
+                ...prev,
+                [name]: '',
+            }));
+        }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const errors = validateForm();
-        if (Object.keys(errors).length > 0) {
-            setValidationErrors(errors);
+    // Handle OTP field changes
+    const handleOtpChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+        setOtp(value);
+    };
+
+    // Send OTP
+    const sendOtp = async () => {
+        setError('');
+        if (!validate()) return;
+
+        setIsLoading(true);
+        try {
+            const response = await axiosInstance.post(`/auth/send-otp`, {
+                email: formData.email,
+            });
+
+            if (response.data.success) {
+                setOtpEmail(formData.email);
+                setStep(2);
+                toast.success('OTP sent to your email!');
+            } else {
+                setError(response.data.message || 'Failed to send OTP');
+                toast.error(response.data.message || 'Failed to send OTP');
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'Failed to send OTP. Please try again.';
+            setError(errorMsg);
+            toast.error(errorMsg);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Verify OTP and register
+    const verifyOtp = async () => {
+        setError('');
+
+        if (!otp || otp.length !== 6) {
+            setError('Please enter a valid 6-digit OTP');
+            toast.error('Please enter a valid 6-digit OTP');
             return;
         }
-        setValidationErrors({});
 
-        const success = await register(
-            formData.name,
-            formData.email,
-            formData.password,
-            formData.phone
-        );
-        if (success) {
-            navigate('/');
+        setIsLoading(true);
+        try {
+            const response = await axiosInstance.post(`/auth/verify-otp`, {
+                email: otpEmail,
+                otp: otp,
+                name: formData.name,
+                password: formData.password,
+                phone: formData.phone,
+            });
+
+            if (response.data.token) {
+                localStorage.setItem('userToken', response.data.token);
+                localStorage.setItem('userData', JSON.stringify(response.data.user));
+                toast.success('Registration successful!');
+                navigate('/login');
+            } else {
+                setError(response.data.message || 'OTP verification failed');
+                toast.error(response.data.message || 'OTP verification failed');
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'OTP verification failed. Please try again.';
+            setError(errorMsg);
+            toast.error(errorMsg);
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Join Playo</h1>
-                    <p className="text-gray-600">Create your account to get started</p>
-                </div>
+    // Resend OTP
+    const resendOtp = async () => {
+        setError('');
+        setIsLoading(true);
+        try {
+            const response = await axiosInstance.post(`/auth/resend-otp`, {
+                email: otpEmail,
+            });
 
-                {/* Register Form */}
-                <div className="bg-white rounded-2xl shadow-lg p-8">
-                    <form onSubmit={handleSubmit} className="space-y-5">
+            if (response.data.success) {
+                toast.success('OTP resent to your email!');
+            } else {
+                setError(response.data.message || 'Failed to resend OTP');
+                toast.error(response.data.message || 'Failed to resend OTP');
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'Failed to resend OTP. Please try again.';
+            setError(errorMsg);
+            toast.error(errorMsg);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // OTP Registration Flow
+    if (step === 1) {
+        // Step 1: Enter details
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-8">
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="text-gray-600 hover:text-gray-900 font-semibold mb-4 flex items-center gap-2"
+                    >
+                        ← Back to Login
+                    </button>
+
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+                    <p className="text-gray-600 mb-8">Step 1 of 2 - Enter your details</p>
+
+                    <form onSubmit={(e) => { e.preventDefault(); sendOtp(); }} className="space-y-4">
                         {/* Name Field */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -173,9 +284,9 @@ export default function Register() {
                             disabled={isLoading}
                             className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
                         >
-                            {isLoading ? 'Creating account...' : (
+                            {isLoading ? 'Sending OTP...' : (
                                 <>
-                                    Create Account
+                                    Send OTP
                                     <ArrowRight className="w-5 h-5" />
                                 </>
                             )}
@@ -193,6 +304,86 @@ export default function Register() {
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    } else {
+        // Step 2: Verify OTP
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-8">
+                    <button
+                        onClick={() => {
+                            setStep(1);
+                            setOtp('');
+                            setError('');
+                        }}
+                        className="text-gray-600 hover:text-gray-900 font-semibold mb-4 flex items-center gap-2"
+                    >
+                        ← Back
+                    </button>
+
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Verify OTP</h1>
+                    <p className="text-gray-600 mb-8">Step 2 of 2 - Enter the OTP sent to {otpEmail}</p>
+
+                    <form onSubmit={(e) => { e.preventDefault(); verifyOtp(); }} className="space-y-4">
+                        {/* OTP Field */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">OTP Code</label>
+                            <input
+                                type="text"
+                                value={otp}
+                                onChange={handleOtpChange}
+                                placeholder="000000"
+                                maxLength="6"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-center text-2xl tracking-widest font-semibold"
+                            />
+                        </div>
+
+                        {/* API Error */}
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={isLoading || otp.length !== 6}
+                            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                        >
+                            {isLoading ? 'Verifying...' : (
+                                <>
+                                    Verify & Create Account
+                                    <ArrowRight className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    {/* Resend OTP */}
+                    <div className="mt-6 text-center">
+                        <p className="text-gray-600">Didn't receive the OTP?</p>
+                        <button
+                            onClick={resendOtp}
+                            disabled={isLoading}
+                            className="text-green-600 hover:text-green-700 font-semibold mt-2 disabled:text-gray-400"
+                        >
+                            Resend OTP
+                        </button>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-6 text-center">
+                        <p className="text-gray-600">
+                            Already have an account?{' '}
+                            <Link to="/login" className="text-green-600 hover:text-green-700 font-semibold">
+                                Sign in
+                            </Link>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 }
+

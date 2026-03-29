@@ -8,6 +8,7 @@ export const useAuthStore = create((set, get) => ({
     isLoading: false,
     error: null,
     isAuthenticated: false,
+    isInitialized: false,
 
     // Initialize auth state from localStorage
     initAuth: () => {
@@ -17,6 +18,11 @@ export const useAuthStore = create((set, get) => ({
             set({
                 isAuthenticated: true,
                 user: JSON.parse(user),
+                isInitialized: true,
+            });
+        } else {
+            set({
+                isInitialized: true,
             });
         }
     },

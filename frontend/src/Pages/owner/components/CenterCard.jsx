@@ -1,7 +1,7 @@
 import React from 'react';
-import { Trash2, Edit2, MapPin, Phone, Mail, Eye } from 'lucide-react';
+import { Trash2, Edit2, MapPin, Phone, Mail, Eye, CalendarCheck } from 'lucide-react';
 
-export default function CenterCard({ center, onView, onEdit, onDelete, isDeleting = false }) {
+export default function CenterCard({ center, onView, onBookings, onEdit, onDelete, isDeleting = false }) {
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow group">
             {/* Image */}
@@ -20,7 +20,7 @@ export default function CenterCard({ center, onView, onEdit, onDelete, isDeletin
             {/* Clickable overlay for text content */}
             <div
                 onClick={() => onView(center)}
-                className="p-4 cursor-pointer hover:bg-orange-50 transition-colors"
+                className="p-4 cursor-pointer hover:bg-green-50 transition-colors"
             >
                 {/* Name and Status */}
                 <div className="flex justify-between items-start mb-2">
@@ -79,13 +79,22 @@ export default function CenterCard({ center, onView, onEdit, onDelete, isDeletin
 
             {/* Action Buttons */}
             <div className="p-4 border-t space-y-2">
-                <button
-                    onClick={() => onView(center)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                    <Eye size={16} />
-                    View Details
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => onView(center)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    >
+                        <Eye size={16} />
+                        Details
+                    </button>
+                    <button
+                        onClick={() => onBookings(center)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                        <CalendarCheck size={16} />
+                        Bookings
+                    </button>
+                </div>
                 <div className="flex gap-2">
                     <button
                         onClick={() => onEdit(center)}

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
-    const { user, logout } = useAuthStore();
+    const { user, logout, isInitialized } = useAuthStore();
     const {
         users,
         totalPages,
@@ -26,13 +26,15 @@ export default function AdminDashboard() {
     const [newRole, setNewRole] = useState('');
     const [pageSize] = useState(10);
 
-    // Check if user is admin
+    // Check if user is admin - wait for auth to be initialized
     useEffect(() => {
+        if (!isInitialized) return; // Wait for initialization
+
         if (user?.role !== 'ADMIN') {
             navigate('/');
             toast.error('Access denied. Admin only.');
         }
-    }, [user, navigate]);
+    }, [user, navigate, isInitialized]);
 
     // Load users on mount and when page changes
     useEffect(() => {
@@ -219,17 +221,17 @@ export default function AdminDashboard() {
                                                     <td className="px-6 py-4 text-sm text-gray-600">{u.phone || '-'}</td>
                                                     <td className="px-6 py-4">
                                                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-                                                                u.role === 'OWNER' ? 'bg-blue-100 text-blue-800' :
-                                                                    u.role === 'TRAINER' ? 'bg-orange-100 text-orange-800' :
-                                                                        'bg-gray-100 text-gray-800'
+                                                            u.role === 'OWNER' ? 'bg-blue-100 text-blue-800' :
+                                                                u.role === 'TRAINER' ? 'bg-orange-100 text-orange-800' :
+                                                                    'bg-gray-100 text-gray-800'
                                                             }`}>
                                                             {u.role}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDeleted
-                                                                ? 'bg-red-100 text-red-800'
-                                                                : 'bg-green-100 text-green-800'
+                                                            ? 'bg-red-100 text-red-800'
+                                                            : 'bg-green-100 text-green-800'
                                                             }`}>
                                                             {isDeleted ? 'Deleted' : 'Active'}
                                                         </span>
@@ -248,8 +250,8 @@ export default function AdminDashboard() {
                                                             <button
                                                                 onClick={() => isDeleted ? handleRestoreUser(u.id) : handleDeleteUser(u.id)}
                                                                 className={`p-2 rounded-lg ${isDeleted
-                                                                        ? 'text-green-600 hover:bg-green-50'
-                                                                        : 'text-red-600 hover:bg-red-50'
+                                                                    ? 'text-green-600 hover:bg-green-50'
+                                                                    : 'text-red-600 hover:bg-red-50'
                                                                     }`}
                                                                 title={isDeleted ? 'Restore user' : 'Delete user'}
                                                             >

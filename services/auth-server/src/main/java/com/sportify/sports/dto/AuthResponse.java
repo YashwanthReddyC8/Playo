@@ -17,6 +17,7 @@ public class AuthResponse {
     @Getter
     @AllArgsConstructor
     public static class UserDto {
+        private Long id;
         private String name;
         private String email;
         private Role role;

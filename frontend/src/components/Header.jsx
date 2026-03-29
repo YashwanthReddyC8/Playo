@@ -192,6 +192,19 @@ function Header({ hideLocationSearch = false }) {
                         Admin Dashboard
                       </button>
                     )}
+
+                    {user?.role === 'OWNER' && (
+                      <button
+                        onClick={() => {
+                          navigate("/owner");
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        Owner Dashboard
+                      </button>
+                    )}
                   </div>
 
                   <div className="border-t p-2">
@@ -315,6 +328,15 @@ function Header({ hideLocationSearch = false }) {
                         setMobileMenuOpen(false);
                       }}>
                         Admin Dashboard
+                      </div>
+                    )}
+
+                    {user?.role === 'OWNER' && (
+                      <div className="cursor-pointer text-blue-600 p-0.5 hover:bg-blue-50" onClick={() => {
+                        navigate("/owner");
+                        setMobileMenuOpen(false);
+                      }}>
+                        Owner Dashboard
                       </div>
                     )}
 

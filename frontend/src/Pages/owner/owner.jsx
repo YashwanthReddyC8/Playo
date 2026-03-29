@@ -5,6 +5,7 @@ import { useOwnerStore } from '../../stores/ownerStore';
 import CenterCard from './components/CenterCard';
 import CenterFormModal from './components/CenterFormModal';
 import CenterDetailModal from './components/CenterDetailModal';
+import CenterBookingsModal from './components/CenterBookingsModal';
 
 export default function Owner() {
     const {
@@ -25,6 +26,7 @@ export default function Owner() {
     const [deletingId, setDeletingId] = useState(null);
     const [detailCenter, setDetailCenter] = useState(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isBookingsOpen, setIsBookingsOpen] = useState(false);
 
     // Load centers on mount
     useEffect(() => {
@@ -59,8 +61,14 @@ export default function Owner() {
         setIsDetailOpen(true);
     };
 
+    const handleViewBookings = (center) => {
+        setDetailCenter(center);
+        setIsBookingsOpen(true);
+    };
+
     const handleCloseDetail = () => {
         setIsDetailOpen(false);
+        setIsBookingsOpen(false);
         setDetailCenter(null);
     };
 
@@ -107,7 +115,7 @@ export default function Owner() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 p-4 sm:p-6 mb-20 md:mb-0">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
@@ -143,14 +151,14 @@ export default function Owner() {
                                 placeholder="Search by city..."
                                 value={searchCity}
                                 onChange={(e) => setSearchCity(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                             />
                         </div>
 
                         {/* Create Button */}
                         <button
                             onClick={handleCreateClick}
-                            className="flex items-center justify-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                            className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
                         >
                             <Plus size={20} />
                             Create Center
@@ -162,7 +170,7 @@ export default function Owner() {
                 {isLoading && (
                     <div className="flex justify-center items-center py-12">
                         <div className="text-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
                             <p className="text-gray-600">Loading your centers...</p>
                         </div>
                     </div>
@@ -187,7 +195,7 @@ export default function Owner() {
                         {!searchCity.trim() && (
                             <button
                                 onClick={handleCreateClick}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                             >
                                 <Plus size={20} />
                                 Create First Center
@@ -208,6 +216,7 @@ export default function Owner() {
                                     key={center.id}
                                     center={center}
                                     onView={handleViewDetails}
+                                    onBookings={handleViewBookings}
                                     onEdit={handleEditClick}
                                     onDelete={handleDeleteCenter}
                                     isDeleting={deletingId === center.id}
@@ -233,6 +242,13 @@ export default function Owner() {
                 {/* Detail Modal */}
                 <CenterDetailModal
                     isOpen={isDetailOpen}
+                    onClose={handleCloseDetail}
+                    center={detailCenter}
+                />
+
+                {/* Bookings Modal */}
+                <CenterBookingsModal
+                    isOpen={isBookingsOpen}
                     onClose={handleCloseDetail}
                     center={detailCenter}
                 />

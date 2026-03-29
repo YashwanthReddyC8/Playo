@@ -6,11 +6,17 @@ import com.sportify.sports.dto.ChangePasswordRequest;
 import com.sportify.sports.dto.ErrorResponse;
 import com.sportify.sports.dto.RegisterRequest;
 import com.sportify.sports.dto.SuccessResponse;
+import com.sportify.sports.dto.SendOtpRequest;
+import com.sportify.sports.dto.VerifyOtpRequest;
+import com.sportify.sports.dto.OtpResponse;
 import com.sportify.commonmodels.entity.Role;
 import com.sportify.commonmodels.entity.User;
 import com.sportify.commonmodels.repository.UserRepository;
 import com.sportify.sports.security.JwtService;
+import com.sportify.sports.service.OtpService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
         @Autowired
@@ -34,6 +41,8 @@ public class AuthController {
         private final AuthenticationManager authManager;
         @Autowired
         private final JwtService jwtService;
+        @Autowired
+        private final OtpService otpService;
 
         @PostMapping("/register")
         public AuthResponse register(@RequestBody RegisterRequest request) {
@@ -55,6 +64,7 @@ public class AuthController {
                 String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getRole().name());
 
                 AuthResponse.UserDto userDto = new AuthResponse.UserDto(
+                                user.getId(),
                                 user.getName(),
                                 user.getEmail(),
                                 user.getRole(),
@@ -79,6 +89,7 @@ public class AuthController {
                         String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getRole().name());
 
                         AuthResponse.UserDto userDto = new AuthResponse.UserDto(
+                                        user.getId(),
                                         user.getName(),
                                         user.getEmail(),
                                         user.getRole(),
@@ -98,6 +109,97 @@ public class AuthController {
         @PostMapping("/logout")
         public ResponseEntity<?> logout() {
                 return ResponseEntity.ok("Logged out successfully");
+        }
+
+        /**
+         * Send OTP to email for registration
+         * POST /api/auth/send-otp
+         */
+        @PostMapping("/send-otp")
+        public ResponseEntity<?> sendOtp(@Valid @RequestBody SendOtpRequest request) {
+                try {
+                        otpService.sendOtp(request.getEmail());
+                        return ResponseEntity.ok(new OtpResponse(
+                                        true,
+                                        "OTP sent to " + request.getEmail(),
+                                        300 // 5 minutes
+                        ));
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest()
+                                        .body(new OtpResponse(false, e.getMessage(), null));
+                }
+        }
+
+        /**
+         * Verify OTP and complete registration
+         * POST /api/auth/verify-otp
+         */
+        @PostMapping("/verify-otp")
+        public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+                try {
+                        // Verify OTP
+                        otpService.verifyOtp(request.getEmail(), request.getOtp());
+
+                        // Check if user already exists
+                        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                                return ResponseEntity.badRequest()
+                                                .body(new OtpResponse(false, "Email already registered", null));
+                        }
+
+                        // Create user
+                        User user = User.builder()
+                                        .name(request.getName())
+                                        .email(request.getEmail())
+                                        .password(passwordEncoder.encode(request.getPassword()))
+                                        .phone(request.getPhone())
+                                        .role(Role.USER)
+                                        .build();
+
+                        userRepository.save(user);
+
+                        // Generate token
+                        String token = jwtService.generateToken(user.getEmail(), user.getName(), user.getRole().name());
+
+                        AuthResponse.UserDto userDto = new AuthResponse.UserDto(
+                                        user.getId(),
+                                        user.getName(),
+                                        user.getEmail(),
+                                        user.getRole(),
+                                        user.getProfileLink(),
+                                        user.getPhone());
+
+                        // Clean up OTP (non-blocking - don't fail the response if cleanup fails)
+                        try {
+                                otpService.deleteOtp(request.getEmail());
+                        } catch (Exception cleanupError) {
+                                log.warn("Failed to clean up OTP for email: {}", request.getEmail(), cleanupError);
+                                // Continue - don't fail the registration
+                        }
+
+                        return ResponseEntity.ok(new AuthResponse(token, userDto));
+
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest()
+                                        .body(new OtpResponse(false, e.getMessage(), null));
+                }
+        }
+
+        /**
+         * Resend OTP
+         * POST /api/auth/resend-otp
+         */
+        @PostMapping("/resend-otp")
+        public ResponseEntity<?> resendOtp(@Valid @RequestBody SendOtpRequest request) {
+                try {
+                        otpService.sendOtp(request.getEmail());
+                        return ResponseEntity.ok(new OtpResponse(
+                                        true,
+                                        "OTP resent to " + request.getEmail(),
+                                        300));
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest()
+                                        .body(new OtpResponse(false, e.getMessage(), null));
+                }
         }
 
         /**
