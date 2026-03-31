@@ -1,0 +1,4 @@
+com\sportify\commonmodels\repository\UserRepository.class
+com\sportify\commonmodels\entity\Role.class
+com\sportify\commonmodels\entity\User.class
+com\sportify\commonmodels\entity\User$UserBuilder.class

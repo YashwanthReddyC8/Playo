@@ -3,21 +3,28 @@ import ReactDOM from "react-dom";
 import login_bg from "../assets/login_bg.png";
 import login_top from "../assets/login-top.png";
 import axiosInstance from "../api/axios";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginModal({ isOpen, onClose, onSuccess }) {
+  const navigate = useNavigate();
   const [authMode, setAuthMode] = useState("login"); // login | signup
   const [loginType, setLoginType] = useState("password"); // password | otp
   const [step, setStep] = useState(1);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errors, setErrors] = useState({});
+  const { login: zustandLogin, register: zustandRegister, forgotPassword } = useAuthStore();
 
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
     otp: "",
-    mobile: "",
+    phone: "",
   });
+
+  const [otpEmail, setOtpEmail] = useState("");
 
   // 🎨 Theme Colors
   const theme = {
@@ -31,118 +38,199 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // useEffect(() => {
-  //   setErrors({});
-  // }, [step, authMode, loginType]);
-
-  // 1=email, 2=password/name, 3=otp verification
-  const validateStep = () => {
-    const newErrors = {};
-
-    if (step === 1) {
-      if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) {
-        newErrors.email = "Valid email required";
-      }
-
-      if (authMode === "signup") {
-        if (!form.mobile || form.mobile.length !== 10) {
-          newErrors.mobile = "Valid 10 digit mobile required";
-        }
-      }
-    }
-
-    if (step === 2 && authMode === "login") {
-      if (loginType === "password") {
-        if (!form.password || form.password.length < 5) {
-          newErrors.password = "Password must be at least 5 characters";
-        }
-      }
-    }
-
-    if (step === 2 && authMode === "signup") {
-      if (!form.name) newErrors.name = "Name required";
-      if (!form.password || form.password.length < 6) {
-        newErrors.password = "Password must be at least 6 characters";
-      }
-    }
-
-    if (step === 3 && authMode === "signup") {
-      if (!form.otp || form.otp.length !== 6) {
-        newErrors.otp = "Enter valid 6-digit OTP";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const login = async () => {
     try {
       setIsLoggingIn(true);
+      setErrors({});
 
-      const res = await axiosInstance.post("/api/auth/login", {
-        email: form.email,
-        password: form.password,
-      }).catch((err) => {
-        if (err.response?.data?.message) {
-          setErrors({ api: err.response.data.message });
-        } else {
-          setErrors({ api: "Login failed. Please try again." });
-        }
-      });
+      const success = await zustandLogin(form.email, form.password);
 
-      // console.log("Login response:", res.data);
-
-      const userData = {
-        name: res.data.user?.name,
-        email: res.data.user?.email,
-        mobile: res.data.user?.phone,
-        image: (res.data.user?.profileLink !== null && res.data.user?.profileLink !== undefined) ? res.data.user.profileLink : `https://robohash.org/${res.data.user?.name?.replaceAll(" ", "-")}`,
-        spj: res.data.token,
-      };
-      localStorage.setItem("spj", res.data.token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      // console.log("User logged in:", userData);
-      onSuccess(userData);
-      onClose();
-
+      if (success) {
+        onSuccess();
+        onClose();
+      } else {
+        setErrors({ api: "Login failed. Please check your credentials." });
+      }
     } catch (err) {
       console.error("Login failed:", err);
+      setErrors({ api: "Login failed. Please try again." });
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  const signup = async () => {
-    try {
-      setIsLoggingIn(true);
+  const sendOtp = async () => {
+    setErrors({});
+    if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) {
+      setErrors({ email: "Valid email required" });
+      return;
+    }
 
-      const res = await axiosInstance.post("/api/auth/register", {
-        name: form.name,
+    setIsLoggingIn(true);
+    try {
+      const response = await axiosInstance.post(`/api/auth/send-otp`, {
         email: form.email,
-        phone: form.mobile,
-        password: form.password,
-      }).catch((err) => {
-        if (err.response?.data?.message) {
-          setErrors({ api: err.response.data.message });
-        } else {
-          setErrors({ api: "Login failed. Please try again." });
-        }
       });
 
-      const fallbackImage = `https://robohash.org/${form?.name?.replaceAll(" ", "-")}`;
-      const userData = {
-        ...form,
-        image: res.data.user?.profileLink || fallbackImage,
-      };
-      localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("spj", res.data.token);
-
-      onSuccess(userData);
-      onClose();
-
+      if (response.data.success) {
+        setOtpEmail(form.email);
+        setStep(2);
+        toast.success("OTP sent to your email!");
+      } else {
+        setErrors({ api: response.data.message || "Failed to send OTP" });
+        toast.error(response.data.message || "Failed to send OTP");
+      }
     } catch (err) {
-      console.error(err);
+      const errorMsg = err.response?.data?.message || "Failed to send OTP. Please try again.";
+      setErrors({ api: errorMsg });
+      toast.error(errorMsg);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const verifyOtpLogin = async () => {
+    setErrors({});
+
+    if (!form.otp || form.otp.length !== 6) {
+      setErrors({ otp: "Please enter a valid 6-digit OTP" });
+      return;
+    }
+
+    // OTP login not supported - redirect to password login
+    setErrors({ api: "OTP login is not available. Please use password login." });
+    toast.error("OTP login is not available. Please use password login.");
+  };
+
+  const otpSignup = async () => {
+    setErrors({});
+    if (!form.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setErrors({ email: "Valid email is required" });
+      return;
+    }
+    if (!form.name?.trim()) {
+      setErrors({ ...errors, name: "Name is required" });
+      return;
+    }
+    if (!form.phone?.trim() || !/^\d{10}$/.test(form.phone)) {
+      setErrors({ ...errors, phone: "Phone must be 10 digits" });
+      return;
+    }
+    if (!form.password?.trim() || form.password.length < 6) {
+      setErrors({ ...errors, password: "Password must be at least 6 characters" });
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const response = await axiosInstance.post(`/api/auth/send-otp`, {
+        email: form.email,
+      });
+
+      if (response.data.success) {
+        setOtpEmail(form.email);
+        setStep(2);
+        toast.success("OTP sent to your email!");
+      } else {
+        setErrors({ api: response.data.message || "Failed to send OTP" });
+        toast.error(response.data.message || "Failed to send OTP");
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || "Failed to send OTP. Please try again.";
+      setErrors({ api: errorMsg });
+      toast.error(errorMsg);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const verifyOtpSignup = async () => {
+    setErrors({});
+
+    if (!form.otp || form.otp.length !== 6) {
+      setErrors({ otp: "Please enter a valid 6-digit OTP" });
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const response = await axiosInstance.post(`/api/auth/verify-otp`, {
+        email: otpEmail,
+        otp: form.otp,
+        name: form.name,
+        password: form.password,
+        phone: form.phone,
+      });
+
+      if (response.data.token) {
+        // Store in localStorage for persistence
+        localStorage.setItem("spj", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+
+        // Show registration success message
+        toast.success("✓ Registration successful! You are now logged in.");
+
+        // Trigger onSuccess callback
+        onSuccess();
+
+        // Close modal
+        onClose();
+      } else {
+        setErrors({ api: response.data.message || "OTP verification failed" });
+        toast.error(response.data.message || "OTP verification failed");
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || "OTP verification failed. Please try again.";
+      setErrors({ api: errorMsg });
+      toast.error(errorMsg);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    setErrors({});
+    setIsLoggingIn(true);
+    try {
+      const response = await axiosInstance.post(`/api/auth/resend-otp`, {
+        email: otpEmail,
+      });
+
+      if (response.data.success) {
+        toast.success("OTP resent to your email!");
+      } else {
+        setErrors({ api: response.data.message || "Failed to resend OTP" });
+        toast.error(response.data.message || "Failed to resend OTP");
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || "Failed to resend OTP. Please try again.";
+      setErrors({ api: errorMsg });
+      toast.error(errorMsg);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    try {
+      setIsLoggingIn(true);
+      setErrors({});
+
+      const success = await forgotPassword(form.email);
+
+      if (success) {
+        toast.success("Redirect to forgot password page");
+        onClose();
+        navigate('/forgot-password');
+        setForm({ name: "", email: "", password: "", otp: "", phone: "" });
+        setAuthMode("login");
+        setStep(1);
+      } else {
+        setErrors({ api: "Failed to send reset email." });
+      }
+    } catch (err) {
+      console.error("Forgot password failed:", err);
+      setErrors({ api: "Failed to send reset email." });
     } finally {
       setIsLoggingIn(false);
     }
@@ -179,11 +267,13 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
           onSubmit={(e) => {
             e.preventDefault();
 
-            if (!validateStep()) return;
-
             // LOGIN FLOW
             if (authMode === "login") {
               if (step === 1) {
+                if (!form.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+                  setErrors({ email: "Valid email is required" });
+                  return;
+                }
                 setStep(2);
                 return;
               }
@@ -194,25 +284,20 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               }
 
               if (step === 2 && loginType === "otp") {
-                // OTP login logic
+                verifyOtpLogin();
                 return;
               }
             }
 
-            // SIGNUP FLOW
+            // OTP SIGNUP FLOW
             if (authMode === "signup") {
               if (step === 1) {
-                setStep(2);
+                otpSignup();
                 return;
               }
 
               if (step === 2) {
-                setStep(3);
-                return;
-              }
-
-              if (step === 3) {
-                signup();
+                verifyOtpSignup();
                 return;
               }
             }
@@ -229,12 +314,9 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
             {step > 1 && <div
               onClick={() => {
                 setStep(step - 1);
+                setForm({ ...form, otp: "" });
               }}
-              style={{
-                backgroundColor: authMode === "login" ? theme.primary : theme.secondary,
-                color: authMode === "login" ? theme.white : theme.dark,
-              }}
-              className="flex-1 py-2 rounded-lg w-auto cursor-pointer"
+              className="flex-1 py-2 rounded-lg w-auto cursor-pointer bg-gray-300 text-gray-700 font-semibold"
             >
               &lt;
             </div>}
@@ -245,13 +327,14 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                 setAuthMode("login");
                 setLoginType("password");
                 setStep(1);
+                setForm({ name: "", email: "", password: "", otp: "", phone: "" });
                 setErrors({});
               }}
               style={{
-                backgroundColor: authMode === "login" ? theme.primary : theme.secondary,
-                color: authMode === "login" ? theme.white : theme.dark,
+                backgroundColor: authMode === "login" ? "#00B562" : "#E5E7EB",
+                color: authMode === "login" ? "#ffffff" : "#111827",
               }}
-              className="flex-1 py-2 rounded-lg"
+              className="flex-1 py-2 rounded-lg font-semibold"
             >
               Sign In
             </button>
@@ -260,15 +343,15 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               type="button"
               onClick={() => {
                 setAuthMode("signup");
-                setLoginType("password");
                 setStep(1);
+                setForm({ name: "", email: "", password: "", otp: "", phone: "" });
                 setErrors({});
               }}
               style={{
-                backgroundColor: authMode === "signup" ? theme.primary : theme.secondary,
-                color: authMode === "signup" ? theme.white : theme.dark,
+                backgroundColor: authMode === "signup" ? "#00B562" : "#E5E7EB",
+                color: authMode === "signup" ? "#ffffff" : "#111827",
               }}
-              className="flex-1 py-2 rounded-lg"
+              className="flex-1 py-2 rounded-lg font-semibold"
             >
               Sign Up
             </button>
@@ -277,7 +360,6 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
           {/* ================= STEP 1 EMAIL ================= */}
           {step === 1 && (
             <>
-              {/* <label>Email</label> */}
               <input
                 name="email"
                 value={form.email}
@@ -290,6 +372,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               {authMode === "login" ? (
                 <div className="flex gap-2 mb-4">
                   <button
+                    type="button"
                     onClick={() => setLoginType("password")}
                     style={{
                       backgroundColor: loginType === "password" ? theme.primary : theme.secondary,
@@ -301,6 +384,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => setLoginType("otp")}
                     style={{
                       backgroundColor: loginType === "otp" ? theme.primary : theme.secondary,
@@ -311,25 +395,44 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     OTP
                   </button>
                 </div>
-              ) :
-                <input
-                  name="mobile"
-                  value={form.mobile}
-                  onChange={handleChange}
-                  className="border px-4 py-2 rounded-lg mb-4"
-                  placeholder="Enter mobile number"
-                  type="text"
-                  maxLength={10}
-                  minLength={10}
-                />
-              }
+              ) : (
+                <>
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    className="border px-4 py-2 rounded-lg mb-4"
+                    placeholder="Enter full name"
+                    type="text"
+                  />
+                  <input
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleChange}
+                    className="border px-4 py-2 rounded-lg mb-4"
+                    placeholder="Enter mobile number"
+                    type="text"
+                    maxLength={10}
+                    minLength={10}
+                  />
+                  <input
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    className="border px-4 py-2 rounded-lg mb-4"
+                    placeholder="Enter password"
+                    type="password"
+                  />
+                </>
+              )}
 
               <button
                 type="submit"
                 style={{ backgroundColor: theme.primary, color: theme.white }}
                 className="py-3 rounded-lg"
+                disabled={isLoggingIn}
               >
-                Continue
+                {isLoggingIn ? "Loading..." : "Continue"}
               </button>
             </>
           )}
@@ -348,6 +451,16 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     className="border px-4 py-2 rounded-lg mb-3"
                   />
 
+                  <div className="text-right mb-4">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm text-green-600 hover:text-green-700 font-medium"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+
                   <button
                     type="submit"
                     style={{ backgroundColor: theme.primary, color: theme.white }}
@@ -362,10 +475,13 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
               {loginType === "otp" && (
                 <>
                   <button
+                    type="button"
+                    onClick={sendOtp}
                     style={{ backgroundColor: theme.primary, color: theme.white }}
                     className="py-3 rounded-lg mb-3"
+                    disabled={isLoggingIn}
                   >
-                    Send OTP
+                    {isLoggingIn ? "Sending..." : "Send OTP"}
                   </button>
 
                   <input
@@ -373,6 +489,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     value={form.otp}
                     onChange={handleChange}
                     placeholder="Enter OTP"
+                    maxLength="6"
                     className="border px-4 py-2 rounded-lg mb-3"
                   />
 
@@ -380,90 +497,65 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
                     type="submit"
                     style={{ backgroundColor: theme.primary, color: theme.white }}
                     className="py-3 rounded-lg"
+                    disabled={isLoggingIn || form.otp.length !== 6}
                   >
-                    Verify & Login
+                    {isLoggingIn ? "Verifying..." : "Verify & Login"}
                   </button>
                 </>
               )}
             </>
           )}
 
-          {/* ================= SIGNUP STEP 2 (NAME + PASSWORD) ================= */}
+          {/* ================= SIGNUP STEP 2 (VERIFY OTP) ================= */}
           {step === 2 && authMode === "signup" && (
             <>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Full Name"
-                className="border px-4 py-2 rounded-lg mb-3"
-              />
-
-              <input
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                type="password"
-                placeholder="Create Password"
-                className="border px-4 py-2 rounded-lg mb-3"
-              />
-
-              <button
-                type="submit"
-                style={{ backgroundColor: theme.primary, color: theme.white }}
-                className="py-3 rounded-lg"
-                disabled={isLoggingIn}
-              >
-                {isLoggingIn ? <>Logging in..</> : <>Continue to Verify Email</>}
-              </button>
-            </>
-          )}
-
-          {/* ================= SIGNUP STEP 3 (MANDATORY OTP) ================= */}
-          {step === 3 && authMode === "signup" && (
-            <>
-              <p className="text-sm text-gray-500 mb-2">
+              <p className="text-sm text-gray-500 mb-3">
                 Verify your email with OTP
               </p>
-
-              <button
-                style={{ backgroundColor: theme.primary, color: theme.white }}
-                className="py-3 rounded-lg mb-3"
-              >
-                Send OTP
-              </button>
 
               <input
                 name="otp"
                 value={form.otp}
                 onChange={handleChange}
                 placeholder="Enter OTP"
+                maxLength="6"
                 className="border px-4 py-2 rounded-lg mb-3"
               />
+
+              <button
+                type="button"
+                onClick={resendOtp}
+                className="text-sm text-green-600 hover:text-green-700 font-medium mb-3"
+                disabled={isLoggingIn}
+              >
+                Resend OTP
+              </button>
 
               <button
                 type="submit"
                 style={{ backgroundColor: theme.primary, color: theme.white }}
                 className="py-3 rounded-lg font-semibold"
-                disabled={isLoggingIn}
+                disabled={isLoggingIn || form.otp.length !== 6}
               >
-                {isLoggingIn ? "Verifying... and Creating Account" : "Verify & Create Account"}
+                {isLoggingIn ? "Verifying..." : "Verify & Create Account"}
               </button>
             </>
           )}
+
+          {/* Error Messages */}
           {errors && (
-            <>
-              <p className="text-red-500 text-sm mb-3">{errors.email}</p>
-              <p className="text-red-500 text-sm mb-3">{errors.password}</p>
-              <p className="text-red-500 text-sm mb-3">{errors.otp}</p>
-              <p className="text-red-500 text-sm mb-3">{errors.name}</p>
-              <p className="text-red-500 text-sm mb-3">{errors.mobile}</p>
-              <p className="text-red-500 text-sm mb-3">{errors.api}</p>
-            </>
+            <div className="mt-3 space-y-1">
+              {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+              {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+              {errors.otp && <p className="text-red-500 text-sm">{errors.otp}</p>}
+              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+              {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
+              {errors.api && <p className="text-red-500 text-sm font-semibold">{errors.api}</p>}
+            </div>
           )}
         </form>
       </div>
-    </div >,
+    </div>,
     document.getElementById("modal-root")
   ) : null;
 }

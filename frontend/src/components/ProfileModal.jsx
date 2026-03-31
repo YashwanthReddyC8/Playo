@@ -75,7 +75,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
 
       try {
         const res = await axiosInstance.post(
-          "/api/auth/profile-image",
+          "/api/update/profile",
           formData,
           {
             onUploadProgress: (progressEvent) => {
@@ -89,7 +89,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
         );
         console.log("Uploaded image URL:", res);
         const imageUrl = res.data;
-        const updatedUser = { ...user, image: imageUrl };
+        const updatedUser = { ...user, profileLink: imageUrl };
         localStorage.setItem("user", JSON.stringify(updatedUser));
 
         setUploading(false);
@@ -145,7 +145,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
           {/* Current Image */}
           {!image && (
             <img
-              src={user?.image}
+              src={user?.profileLink}
               className="w-24 h-24 rounded-full border object-cover"
               alt="profile"
             />
@@ -223,7 +223,7 @@ export default function ProfileModal({ isOpen, onClose, user }) {
           />
           <input
             className="border px-3 py-2 rounded-lg w-full"
-            defaultValue={user?.mobile || "9999999999"}
+            defaultValue={user?.phone || "9999999999"}
           />
         </div>
 

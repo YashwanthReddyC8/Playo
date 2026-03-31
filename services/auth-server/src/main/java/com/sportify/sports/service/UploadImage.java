@@ -2,8 +2,8 @@ package com.sportify.sports.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-import com.sportify.sports.entity.User;
-import com.sportify.sports.repository.UserRepository;
+import com.sportify.commonmodels.entity.User;
+import com.sportify.commonmodels.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,8 +29,7 @@ public class UploadImage {
             if (user.getProfileId() != null) {
                 cloudinary.uploader().destroy(
                         user.getProfileId(),
-                        ObjectUtils.emptyMap()
-                );
+                        ObjectUtils.emptyMap());
             }
 
             // 2️⃣ Upload new image
@@ -38,9 +37,7 @@ public class UploadImage {
                     file.getBytes(),
                     ObjectUtils.asMap(
                             "folder", "profile_photos",
-                            "resource_type", "image"
-                    )
-            );
+                            "resource_type", "image"));
 
             String publicId = uploadResult.get("public_id").toString();
             String imageUrl = uploadResult.get("secure_url").toString();
@@ -57,4 +54,3 @@ public class UploadImage {
         }
     }
 }
-
