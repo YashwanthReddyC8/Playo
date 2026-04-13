@@ -3,6 +3,10 @@ import Pagination from "./Pagination";
 import BookingCard from "./BookingCard";
 import { BookingCardSkeleton } from "./Skeletons";
 
+import axiosInstance from "../../../api/axios";
+import { useAuthStore } from "../../../stores/authStore";
+import { venues } from "../../book/venues/data";
+
 const ITEMS_PER_PAGE = 3;
 
 export default function BookingsPage() {
@@ -10,20 +14,60 @@ export default function BookingsPage() {
     const [bookings, setBookings] = useState([]);
     const [activeTab, setActiveTab] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
+    const { user } = useAuthStore();
 
-    // Simulated API call
-    useEffect(() => {
-        setTimeout(() => {
-            setBookings([
-                { id: "DBUPYKAS", status: 1, venue: "Skanda Badminton, Nagole", time: "4:30 PM - 5:30 PM", date: "08", month: "Feb", court: "Synthetic Court 4" },
-                { id: "RJFPFNG", status: 1, venue: "Skanda Badminton, Nagole", time: "3:30 PM - 4:30 PM", date: "08", month: "Feb", court: "Synthetic Court 4" },
-                { id: "JBLFYDXA", status: 0, venue: "SSBA, Boduppal", time: "7:00 PM - 8:00 PM", date: "03", month: "Feb", court: "Synthetic Court 2" },
-                { id: "TEST123", status: 0, venue: "Skanda Badminton, Nagole", time: "6:00 PM - 7:00 PM", date: "10", month: "Feb", court: "Court 3" },
-                { id: "TEST456", status: 1, venue: "Skanda Badminton, Nagole", time: "2:00 PM - 3:00 PM", date: "15", month: "Feb", court: "Court 1" },
-            ]);
+    const fetchBookings = async () => {
+        try {
+            setLoading(true);
+            const userId = user?.id || user?.email;
+            if (!userId) return;
+            const res = await axiosInstance.get(`/api/owners/bookings/user/${userId}`);
+            
+            const mappedBookings = res.data.map(b => {
+                const venue = venues.find(v => v.id === b.venueId);
+                const dateObj = new Date(b.bookingDate);
+                
+                return {
+                    id: b.id.toString(),
+                    status: b.status === "CONFIRMED" ? 1 : b.status === "CANCELLED" ? 0 : 2, 
+                    rawStatus: b.status,
+                    venue: venue ? venue.title : `Venue ID: ${b.venueId}`,
+                    time: b.timeSlot,
+                    date: dateObj.getDate().toString().padStart(2, '0'),
+                    month: dateObj.toLocaleString('en-US', { month: 'short' }),
+                    court: "Main Court",
+                    amount: b.amount,
+                    bookingDate: b.bookingDate
+                };
+            });
+            mappedBookings.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+            setBookings(mappedBookings);
+        } catch (error) {
+            console.error("Error fetching bookings:", error);
+        } finally {
             setLoading(false);
-        }, 1500);
-    }, []);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchBookings();
+        } else {
+            setLoading(false);
+        }
+    }, [user]);
+
+    const handleCancel = async (bookingId) => {
+        if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+        
+        try {
+            await axiosInstance.delete(`/api/owners/bookings/${bookingId}`);
+            fetchBookings();
+        } catch (error) {
+            console.error("Error cancelling booking:", error);
+            alert("Failed to cancel booking.");
+        }
+    };
 
     // Filter bookings
     const filteredBookings = useMemo(() => {
@@ -88,7 +132,7 @@ export default function BookingsPage() {
                     ))
                     : paginatedBookings.length > 0
                         ? paginatedBookings.map((booking) => (
-                            <BookingCard key={booking.id} booking={booking} />
+                            <BookingCard key={booking.id} booking={booking} onCancel={() => handleCancel(booking.id)} />
                         ))
                         : (
                             <div className="text-center py-10 text-gray-500">
