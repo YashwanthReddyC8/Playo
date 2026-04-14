@@ -2,6 +2,12 @@ package com.pm.ownerservice.controller;
 
 import com.pm.ownerservice.dto.BookingRequestDTO;
 import com.pm.ownerservice.dto.BookingResponseDTO;
+import com.pm.ownerservice.dto.JoinPlaySessionRequestDTO;
+import com.pm.ownerservice.dto.AcceptPlayInviteRequestDTO;
+import com.pm.ownerservice.dto.AddPlayParticipantRequestDTO;
+import com.pm.ownerservice.dto.ManagePlayParticipantRequestDTO;
+import com.pm.ownerservice.dto.UpdateBookingPlayRequestDTO;
+import com.pm.ownerservice.dto.UpdatePlaySplitRequestDTO;
 import com.pm.ownerservice.dto.PaymentVerificationDTO;
 import com.pm.ownerservice.dto.RazorpayOrderDTO;
 import com.pm.ownerservice.service.BookingService;
@@ -10,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -125,5 +130,204 @@ public class BookingController {
         BookingResponseDTO booking = bookingService.cancelBooking(bookingId);
 
         return ResponseEntity.ok(booking);
+    }
+
+    /**
+     * GET /api/bookings/play/public
+     * Get public play sessions that can be joined.
+     */
+    @GetMapping("/play/public")
+    public ResponseEntity<List<BookingResponseDTO>> getPublicPlaySessions() {
+        return ResponseEntity.ok(bookingService.getPublicPlaySessions());
+    }
+
+    /**
+     * GET /api/bookings/play
+     * Get play sessions visible to the given user.
+     */
+    @GetMapping("/play")
+    public ResponseEntity<List<BookingResponseDTO>> getVisiblePlaySessions(
+            @RequestParam(value = "viewerUserId", required = false) String viewerUserId) {
+        return ResponseEntity.ok(bookingService.getVisiblePlaySessions(viewerUserId, null));
+    }
+
+    /**
+     * GET /api/bookings/play/visible
+     * Get play sessions visible to the given user id/email pair.
+     */
+    @GetMapping("/play/visible")
+    public ResponseEntity<List<BookingResponseDTO>> getVisiblePlaySessionsWithEmail(
+            @RequestParam(value = "viewerUserId", required = false) String viewerUserId,
+            @RequestParam(value = "viewerEmail", required = false) String viewerEmail) {
+        return ResponseEntity.ok(bookingService.getVisiblePlaySessions(viewerUserId, viewerEmail));
+    }
+
+    /**
+     * GET /api/bookings/play/{joinCode}
+     * Load a play session by invite code.
+     */
+    @GetMapping("/play/{joinCode}")
+    public ResponseEntity<BookingResponseDTO> getPlaySessionByJoinCode(@PathVariable String joinCode) {
+        return ResponseEntity.ok(bookingService.getPlaySessionByJoinCode(joinCode));
+    }
+
+    /**
+     * POST /api/bookings/play/{joinCode}/join
+     * Join a public or private play session.
+     */
+    @PostMapping("/play/{joinCode}/join")
+    public ResponseEntity<BookingResponseDTO> joinPlaySession(
+            @PathVariable String joinCode,
+            @Valid @RequestBody JoinPlaySessionRequestDTO request) {
+        log.info("User {} requesting join for play session {}", request.userId(), joinCode);
+        return ResponseEntity.ok(bookingService.joinPlaySession(joinCode, request.userId(), request.email()));
+    }
+
+    /**
+     * POST /api/bookings/{bookingId}/play/invitations/accept
+     * Accept a host invitation for a private play.
+     */
+    @PostMapping("/{bookingId}/play/invitations/accept")
+    public ResponseEntity<BookingResponseDTO> acceptPlayInvite(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody AcceptPlayInviteRequestDTO request) {
+        return ResponseEntity.ok(bookingService.acceptInviteToPlay(bookingId, request.userId(), request.email()));
+    }
+
+    /**
+     * POST /api/bookings/{bookingId}/play/requests/{requestUserId}/approve
+     * Host approves a public join request.
+     */
+    @PostMapping("/{bookingId}/play/requests/{requestUserId}/approve")
+    public ResponseEntity<BookingResponseDTO> approveJoinRequest(
+            @PathVariable Long bookingId,
+            @PathVariable String requestUserId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        return ResponseEntity.ok(bookingService.approveJoinRequest(bookingId, requestUserId, request.hostUserId()));
+    }
+
+    /**
+     * POST /api/bookings/{bookingId}/play/requests/{requestUserId}/reject
+     * Host rejects a public join request.
+     */
+    @PostMapping("/{bookingId}/play/requests/{requestUserId}/reject")
+    public ResponseEntity<BookingResponseDTO> rejectJoinRequest(
+            @PathVariable Long bookingId,
+            @PathVariable String requestUserId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        return ResponseEntity.ok(bookingService.rejectJoinRequest(bookingId, requestUserId, request.hostUserId()));
+    }
+
+    /**
+     * DELETE /api/bookings/{bookingId}/play/requests/{requestUserId}
+     * Backward-compatible alias for rejecting a public join request.
+     */
+    @DeleteMapping("/{bookingId}/play/requests/{requestUserId}")
+    public ResponseEntity<BookingResponseDTO> rejectJoinRequestWithDelete(
+            @PathVariable Long bookingId,
+            @PathVariable String requestUserId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        return ResponseEntity.ok(bookingService.rejectJoinRequest(bookingId, requestUserId, request.hostUserId()));
+    }
+
+    /**
+     * PUT /api/bookings/{bookingId}/play
+     * Mark an existing booking as a public or private play session.
+     */
+    @PutMapping("/{bookingId}/play")
+    public ResponseEntity<BookingResponseDTO> updateBookingPlaySettings(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody UpdateBookingPlayRequestDTO request) {
+        return ResponseEntity.ok(bookingService.updatePlaySettings(bookingId, request));
+    }
+
+    /**
+     * DELETE /api/bookings/play/user/{userId}
+     * Delete all play sessions created by the user.
+     */
+    @DeleteMapping("/play/user/{userId}")
+    public ResponseEntity<Void> deleteAllPlaySessionsForUser(@PathVariable String userId) {
+        bookingService.deleteAllPlaySessionsForUser(userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * DELETE /api/bookings/{bookingId}/play
+     * Host deletes (disables) one play session.
+     */
+    @DeleteMapping("/{bookingId}/play")
+    public ResponseEntity<Void> deletePlaySession(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        bookingService.deletePlaySession(bookingId, request.hostUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * POST /api/bookings/{bookingId}/play/disable
+     * Backward-compatible alias for disabling a play session.
+     */
+    @PostMapping("/{bookingId}/play/disable")
+    public ResponseEntity<Void> disablePlaySession(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        bookingService.deletePlaySession(bookingId, request.hostUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * GET /api/bookings/{bookingId}/play/participants
+     * Get participant user IDs for a play session.
+     */
+    @GetMapping("/{bookingId}/play/participants")
+    public ResponseEntity<List<String>> getPlayParticipants(@PathVariable Long bookingId) {
+        return ResponseEntity.ok(bookingService.getPlayParticipants(bookingId));
+    }
+
+    /**
+     * POST /api/bookings/{bookingId}/play/participants
+     * Host adds a participant to the play.
+     */
+    @PostMapping("/{bookingId}/play/participants")
+    public ResponseEntity<BookingResponseDTO> addParticipant(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody AddPlayParticipantRequestDTO request) {
+        return ResponseEntity.ok(
+                bookingService.addParticipantToPlay(bookingId, request.participantUserId(), request.hostUserId()));
+    }
+
+    /**
+     * DELETE /api/bookings/{bookingId}/play/participants/{participantUserId}
+     * Remove a participant from a play session (host only).
+     */
+    @DeleteMapping("/{bookingId}/play/participants/{participantUserId}")
+    public ResponseEntity<BookingResponseDTO> removeParticipant(
+            @PathVariable Long bookingId,
+            @PathVariable String participantUserId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        return ResponseEntity.ok(bookingService.removeParticipantFromPlay(bookingId, participantUserId, request.hostUserId()));
+    }
+
+    /**
+     * POST /api/bookings/{bookingId}/play/participants/{participantUserId}/remove
+     * Backward-compatible alias for removing a participant from a play session.
+     */
+    @PostMapping("/{bookingId}/play/participants/{participantUserId}/remove")
+    public ResponseEntity<BookingResponseDTO> removeParticipantWithPost(
+            @PathVariable Long bookingId,
+            @PathVariable String participantUserId,
+            @Valid @RequestBody ManagePlayParticipantRequestDTO request) {
+        return ResponseEntity.ok(bookingService.removeParticipantFromPlay(bookingId, participantUserId, request.hostUserId()));
+    }
+
+    /**
+     * PUT /api/bookings/{bookingId}/play/split
+     * Host updates participant split percentages.
+     */
+    @PutMapping("/{bookingId}/play/split")
+    public ResponseEntity<BookingResponseDTO> updatePlaySplit(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody UpdatePlaySplitRequestDTO request) {
+        return ResponseEntity.ok(bookingService.updatePlaySplitPercentages(bookingId, request.hostUserId(), request.splitPercentages()));
     }
 }

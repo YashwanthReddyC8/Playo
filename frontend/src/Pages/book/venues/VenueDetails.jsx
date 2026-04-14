@@ -88,6 +88,8 @@ export default function VenueDetails() {
   const [selectedSport, setSelectedSport] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState(null);
+  const [playVisibility, setPlayVisibility] = useState("PRIVATE");
+  const [maxPlayers, setMaxPlayers] = useState(2);
   const [bookedSlotsDict, setBookedSlotsDict] = useState({});
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
@@ -258,6 +260,12 @@ export default function VenueDetails() {
       }
     }
   }, [availableSlots, selectedSlot]);
+
+  useEffect(() => {
+    if (playVisibility !== "PUBLIC" && maxPlayers < 2) {
+      setMaxPlayers(2);
+    }
+  }, [playVisibility, maxPlayers]);
 
   if (loadingCenter) return <div className="p-6 sm:p-10 text-center text-xl font-bold">Loading venue...</div>;
   if (!venue) return <div className="p-6 sm:p-10 text-center text-xl font-bold">Venue Not Found</div>;
@@ -471,6 +479,46 @@ export default function VenueDetails() {
                 <span className="text-gray-500">Sport</span>
                 <span className="font-semibold text-gray-800">{selectedSport}</span>
               </div>
+              <div className="space-y-2">
+                <span className="text-gray-500 text-sm">Play Type</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPlayVisibility("PRIVATE")}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                      playVisibility === "PRIVATE"
+                        ? "border-green-600 bg-green-50 text-green-700"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Private
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayVisibility("PUBLIC")}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                      playVisibility === "PUBLIC"
+                        ? "border-green-600 bg-green-50 text-green-700"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Public
+                  </button>
+                </div>
+              </div>
+              {playVisibility === "PUBLIC" && (
+                <label className="block space-y-2">
+                  <span className="text-gray-500 text-sm">Max Players</span>
+                  <input
+                    type="number"
+                    min="2"
+                    max="50"
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(Math.max(2, Number(e.target.value) || 2))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </label>
+              )}
               <hr className="border-gray-100" />
               <div className="flex justify-between items-center text-lg">
                 <span className="font-bold text-gray-800">Total</span>
@@ -486,6 +534,8 @@ export default function VenueDetails() {
               sportName={selectedSport}
               facilityId={selectedFacility?.id || null}
               timeSlotId={selectedSlot?.sourceSlotId || null}
+              playVisibility={playVisibility}
+              maxPlayers={maxPlayers}
             />
             
             <p className="text-xs text-center text-gray-400 mt-4 leading-relaxed">

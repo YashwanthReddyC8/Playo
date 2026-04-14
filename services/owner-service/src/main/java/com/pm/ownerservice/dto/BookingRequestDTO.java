@@ -23,6 +23,10 @@ public record BookingRequestDTO(
 
         @NotBlank(message = "Sport name is required") String sportName,
 
+        String playVisibility,
+
+        Integer maxPlayers,
+
         Long facilityId,
 
         Long timeSlotId,

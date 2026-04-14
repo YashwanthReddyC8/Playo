@@ -4,7 +4,17 @@ import axiosInstance from '../api/axios';
 import { useAuthStore } from '../stores/authStore';
 import { useNavigate } from 'react-router-dom';
 
-const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount, sportName, facilityId = null, timeSlotId = null }) => {
+const PaymentButton = ({
+  venueId,
+  selectedDate,
+  selectedSlot,
+  amount,
+  sportName,
+  facilityId = null,
+  timeSlotId = null,
+  playVisibility = "PRIVATE",
+  maxPlayers = 2,
+}) => {
   const [loading, setLoading] = useState(false);
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -49,7 +59,9 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount, sportName,
         bookingDate: selectedDate,
         timeSlot: selectedSlot,
         sportName,
-        amount: amount
+        amount: amount,
+        playVisibility,
+        maxPlayers: Number(maxPlayers) || 2,
       });
 
       // 2. Open Razorpay Checkout
@@ -63,13 +75,23 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount, sportName,
         handler: async function (response) {
           try {
             // 3. Verify Payment
-            await axiosInstance.post('/api/owners/bookings/verify', {
+            const verifyResponse = await axiosInstance.post('/api/owners/bookings/verify', {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
 
-            toast.success("Booking Confirmed! 🎉");
+            const joinLink = verifyResponse.data?.joinLink;
+            if (joinLink) {
+              try {
+                await navigator.clipboard.writeText(joinLink);
+                toast.success("Booking confirmed. Join link copied to clipboard.");
+              } catch {
+                toast.success("Booking confirmed. Copy the join link from your booking details.");
+              }
+            } else {
+              toast.success("Booking Confirmed! 🎉");
+            }
             // Navigate to profile or bookings page
             navigate("/myprofile");
           } catch (err) {

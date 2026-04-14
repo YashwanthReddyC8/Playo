@@ -4,6 +4,7 @@ import com.pm.ownerservice.dto.BookingRequestDTO;
 import com.pm.ownerservice.dto.BookingResponseDTO;
 import com.pm.ownerservice.dto.PaymentVerificationDTO;
 import com.pm.ownerservice.dto.RazorpayOrderDTO;
+import com.pm.ownerservice.dto.UpdateBookingPlayRequestDTO;
 import com.pm.ownerservice.entity.Booking;
 import com.pm.ownerservice.entity.TimeSlot;
 import com.pm.ownerservice.exception.PaymentFailedException;
@@ -22,11 +23,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.UUID;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +51,9 @@ public class BookingService {
 
     @Value("${razorpay.key-secret}")
     private String razorpayKeySecret;
+
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     private static final String CURRENCY = "INR";
     /**
@@ -59,7 +72,11 @@ public class BookingService {
         validateCenterInactiveDate(request.venueId(), request.bookingDate());
         validateSelectedTimeSlot(request);
         validateInactiveDate(request.timeSlotId(), request.bookingDate());
+        validateBookingStartNotPassed(request.bookingDate(), request.timeSlot());
         checkSlotAvailability(request.venueId(), request.bookingDate(), request.timeSlot(), request.timeSlotId());
+
+        Booking.PlayVisibility playVisibility = resolvePlayVisibility(request.playVisibility());
+        boolean playEnabled = request.playVisibility() != null && !request.playVisibility().isBlank();
 
         // Create booking with PENDING status
         Booking booking = Booking.builder()
@@ -71,6 +88,13 @@ public class BookingService {
                 .bookingDate(request.bookingDate())
                 .timeSlot(request.timeSlot())
                 .amount(request.amount())
+                .playEnabled(playEnabled)
+                .playVisibility(playVisibility)
+            .joinCode(UUID.randomUUID().toString().replace("-", ""))
+            .maxPlayers(resolveMaxPlayers(request.maxPlayers()))
+            .joinedPlayers(1)
+                .joinedUserIds(request.userId())
+                .splitAmount(resolveSplitAmount(request.amount(), request.maxPlayers(), playVisibility))
                 .status(Booking.BookingStatus.PENDING)
                 .build();
 
@@ -182,6 +206,299 @@ public class BookingService {
     }
 
     /**
+     * Get all public play sessions that can be joined
+     */
+    public List<BookingResponseDTO> getPublicPlaySessions() {
+        return bookingRepository.findByPlayEnabledTrueAndStatusOrderByCreatedAtDesc(Booking.BookingStatus.CONFIRMED)
+                .stream()
+            .filter(booking -> booking.getPlayVisibility() == Booking.PlayVisibility.PUBLIC)
+            .filter(booking -> !isPlayExpired(booking))
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
+    /**
+     * Get all visible play sessions for a user.
+     */
+    public List<BookingResponseDTO> getVisiblePlaySessions(String viewerUserId, String viewerEmail) {
+        return bookingRepository.findByPlayEnabledTrueAndStatusOrderByCreatedAtDesc(Booking.BookingStatus.CONFIRMED)
+                .stream()
+                .filter(booking -> !isPlayExpired(booking))
+                .filter(booking -> isSessionVisibleToUser(booking, viewerUserId, viewerEmail))
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
+    /**
+     * Get a session by invite code for private join links.
+     */
+    public BookingResponseDTO getPlaySessionByJoinCode(String joinCode) {
+        Booking booking = bookingRepository.findByJoinCode(joinCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Play session not found for code: " + joinCode));
+
+        if (Boolean.FALSE.equals(booking.getPlayEnabled()) || isPlayExpired(booking)) {
+            throw new ResourceNotFoundException("Play session expired");
+        }
+
+        return mapToResponseDTO(booking);
+    }
+
+    /**
+     * Request to join an existing public play session.
+     */
+    public BookingResponseDTO joinPlaySession(String joinCode, String userId, String email) {
+        Booking booking = bookingRepository.findByJoinCode(joinCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Play session not found for code: " + joinCode));
+
+        if (Boolean.FALSE.equals(booking.getPlayEnabled()) || isPlayExpired(booking)) {
+            throw new SlotNotAvailableException("This play session has expired");
+        }
+
+        if (booking.getStatus() != Booking.BookingStatus.CONFIRMED) {
+            throw new SlotNotAvailableException("Only confirmed sessions can be joined");
+        }
+
+        List<String> participants = getParticipants(booking);
+        List<String> pendingRequests = getPendingJoinRequests(booking);
+        List<String> pendingInvites = getPendingInvites(booking);
+
+        String normalizedUserId = userId == null ? "" : userId.trim();
+        String normalizedEmail = email == null ? "" : email.trim();
+        String participantIdentifier = !normalizedEmail.isBlank() ? normalizedEmail : normalizedUserId;
+
+        if ((!normalizedUserId.isBlank() && participants.contains(normalizedUserId))
+                || (!normalizedEmail.isBlank() && participants.contains(normalizedEmail))) {
+            throw new SlotNotAvailableException("User already joined this play session");
+        }
+
+        if (participantIdentifier.isBlank()) {
+            throw new SlotNotAvailableException("User identifier is required to join play");
+        }
+
+        if (booking.getPlayVisibility() == Booking.PlayVisibility.PRIVATE) {
+            int maxPlayers = booking.getMaxPlayers() != null && booking.getMaxPlayers() > 0 ? booking.getMaxPlayers() : 2;
+            if (participants.size() >= maxPlayers) {
+                throw new SlotNotAvailableException("This play session is already full");
+            }
+
+            participants.add(participantIdentifier);
+            String inviteIdentifier = resolveInviteIdentifier(pendingInvites, normalizedUserId, normalizedEmail);
+            if (inviteIdentifier != null) {
+                pendingInvites.remove(inviteIdentifier);
+            }
+
+            booking.setPendingInviteUserIds(serializeIdentifierList(pendingInvites));
+            booking.setJoinedUserIds(String.join(",", participants));
+            booking.setJoinedPlayers(participants.size());
+            booking.setSplitAmount(resolveSplitAmount(booking.getAmount(), booking.getMaxPlayers(), booking.getPlayVisibility()));
+            booking.setPaymentSplitPercentages(serializeSplitPercentages(buildEvenSplitPercentages(participants)));
+
+            Booking updatedBooking = bookingRepository.save(booking);
+            log.info("User {} joined private play session {} via link", participantIdentifier, booking.getId());
+            return mapToResponseDTO(updatedBooking);
+        }
+
+        if (pendingRequests.contains(participantIdentifier)) {
+            throw new SlotNotAvailableException("Join request already pending host approval");
+        }
+
+        int maxPlayers = booking.getMaxPlayers() != null && booking.getMaxPlayers() > 0 ? booking.getMaxPlayers() : 2;
+        if (participants.size() >= maxPlayers) {
+            throw new SlotNotAvailableException("This play session is already full");
+        }
+
+        pendingRequests.add(participantIdentifier);
+        booking.setPendingJoinRequestUserIds(serializeIdentifierList(pendingRequests));
+
+        Booking updatedBooking = bookingRepository.save(booking);
+        log.info("User {} requested to join play session {}", participantIdentifier, booking.getId());
+        return mapToResponseDTO(updatedBooking);
+    }
+
+    public BookingResponseDTO acceptInviteToPlay(Long bookingId, String userId, String email) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled()) || isPlayExpired(booking)) {
+            throw new SlotNotAvailableException("This play session has expired");
+        }
+
+        List<String> pendingInvites = getPendingInvites(booking);
+        String inviteIdentifier = resolveInviteIdentifier(pendingInvites, userId, email);
+        if (inviteIdentifier == null) {
+            throw new SlotNotAvailableException("No pending invite found for user");
+        }
+
+        String participantIdentifier;
+        if (inviteIdentifier.contains("@")) {
+            participantIdentifier = inviteIdentifier;
+        } else {
+            participantIdentifier = userId != null && !userId.isBlank() ? userId.trim() : inviteIdentifier;
+        }
+
+        List<String> participants = getParticipants(booking);
+        if (!participants.contains(participantIdentifier)) {
+            int maxPlayers = booking.getMaxPlayers() != null && booking.getMaxPlayers() > 0 ? booking.getMaxPlayers() : 2;
+            if (participants.size() >= maxPlayers) {
+                throw new SlotNotAvailableException("This play session is already full");
+            }
+            participants.add(participantIdentifier);
+        }
+
+        pendingInvites.remove(inviteIdentifier);
+        booking.setPendingInviteUserIds(serializeIdentifierList(pendingInvites));
+        booking.setJoinedUserIds(String.join(",", participants));
+        booking.setJoinedPlayers(participants.size());
+        booking.setSplitAmount(resolveSplitAmount(booking.getAmount(), booking.getMaxPlayers(), booking.getPlayVisibility()));
+        booking.setPaymentSplitPercentages(serializeSplitPercentages(buildEvenSplitPercentages(participants)));
+
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    public BookingResponseDTO approveJoinRequest(Long bookingId, String requestUserId, String hostUserId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new SlotNotAvailableException("Play is not enabled for this booking");
+        }
+
+        if (!Objects.equals(booking.getUserId(), hostUserId)) {
+            throw new SlotNotAvailableException("Only play host can approve join requests");
+        }
+
+        List<String> pendingRequests = getPendingJoinRequests(booking);
+        if (!pendingRequests.contains(requestUserId)) {
+            throw new ResourceNotFoundException("Join request not found for user: " + requestUserId);
+        }
+
+        List<String> participants = getParticipants(booking);
+        if (!participants.contains(requestUserId)) {
+            int maxPlayers = booking.getMaxPlayers() != null && booking.getMaxPlayers() > 0 ? booking.getMaxPlayers() : 2;
+            if (participants.size() >= maxPlayers) {
+                throw new SlotNotAvailableException("This play session is already full");
+            }
+            participants.add(requestUserId);
+        }
+
+        pendingRequests.remove(requestUserId);
+        booking.setPendingJoinRequestUserIds(serializeIdentifierList(pendingRequests));
+        booking.setJoinedUserIds(String.join(",", participants));
+        booking.setJoinedPlayers(participants.size());
+        booking.setSplitAmount(resolveSplitAmount(booking.getAmount(), booking.getMaxPlayers(), booking.getPlayVisibility()));
+        booking.setPaymentSplitPercentages(serializeSplitPercentages(buildEvenSplitPercentages(participants)));
+
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    public BookingResponseDTO rejectJoinRequest(Long bookingId, String requestUserId, String hostUserId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new SlotNotAvailableException("Play is not enabled for this booking");
+        }
+
+        if (!Objects.equals(booking.getUserId(), hostUserId)) {
+            throw new SlotNotAvailableException("Only play host can manage join requests");
+        }
+
+        List<String> pendingRequests = getPendingJoinRequests(booking);
+        boolean removed = pendingRequests.remove(requestUserId);
+        if (!removed) {
+            throw new ResourceNotFoundException("Join request not found for user: " + requestUserId);
+        }
+
+        booking.setPendingJoinRequestUserIds(serializeIdentifierList(pendingRequests));
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    /**
+     * Update play visibility settings on an existing booking.
+     */
+    public BookingResponseDTO updatePlaySettings(Long bookingId, UpdateBookingPlayRequestDTO request) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (booking.getStatus() != Booking.BookingStatus.CONFIRMED) {
+            throw new SlotNotAvailableException("Only confirmed bookings can be converted to play sessions");
+        }
+
+        validateBookingStartNotPassed(booking.getBookingDate(), booking.getTimeSlot());
+
+        Booking.PlayVisibility visibility = resolvePlayVisibility(request.playVisibility());
+        int maxPlayers = resolveMaxPlayers(request.maxPlayers());
+
+        booking.setPlayEnabled(true);
+        booking.setPlayVisibility(visibility);
+        booking.setMaxPlayers(maxPlayers);
+        List<String> participants = getParticipants(booking);
+        if (!participants.contains(booking.getUserId())) {
+            participants.add(0, booking.getUserId());
+        }
+        booking.setJoinedUserIds(String.join(",", participants));
+        booking.setJoinedPlayers(Math.max(participants.size(), 1));
+        if (booking.getJoinCode() == null || booking.getJoinCode().isBlank()) {
+            booking.setJoinCode(UUID.randomUUID().toString().replace("-", ""));
+        }
+        booking.setSplitAmount(resolveSplitAmount(booking.getAmount(), maxPlayers, visibility));
+        booking.setPaymentSplitPercentages(serializeSplitPercentages(buildEvenSplitPercentages(participants)));
+
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    /**
+     * Delete all play sessions for a user.
+     */
+    public int deleteAllPlaySessionsForUser(String userId) {
+        List<Booking> userBookings = bookingRepository.findByUserId(userId);
+        int updatedCount = 0;
+
+        for (Booking booking : userBookings) {
+            if (Boolean.TRUE.equals(booking.getPlayEnabled())) {
+                booking.setPlayEnabled(false);
+                booking.setPlayVisibility(Booking.PlayVisibility.PRIVATE);
+                booking.setJoinedPlayers(1);
+                booking.setJoinedUserIds(booking.getUserId());
+                booking.setPendingInviteUserIds("");
+                booking.setPendingJoinRequestUserIds("");
+                booking.setSplitAmount(booking.getAmount());
+                booking.setPaymentSplitPercentages(booking.getUserId() + ":100");
+                updatedCount += 1;
+            }
+        }
+
+        if (updatedCount > 0) {
+            bookingRepository.saveAll(userBookings);
+        }
+
+        return updatedCount;
+    }
+
+    public void deletePlaySession(Long bookingId, String hostUserId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new SlotNotAvailableException("Play is not enabled for this booking");
+        }
+
+        if (!Objects.equals(booking.getUserId(), hostUserId)) {
+            throw new SlotNotAvailableException("Only play host can delete this play");
+        }
+
+        booking.setPlayEnabled(false);
+        booking.setPlayVisibility(Booking.PlayVisibility.PRIVATE);
+        booking.setJoinedPlayers(1);
+        booking.setJoinedUserIds(booking.getUserId());
+        booking.setPendingInviteUserIds("");
+        booking.setPendingJoinRequestUserIds("");
+        booking.setSplitAmount(booking.getAmount());
+        booking.setPaymentSplitPercentages(booking.getUserId() + ":100");
+        bookingRepository.save(booking);
+    }
+
+    /**
      * Cancel a booking
      */
     public BookingResponseDTO cancelBooking(Long bookingId) {
@@ -205,7 +522,415 @@ public class BookingService {
         String sportName = booking.getFacilityId() != null
                 ? sportCenterService.getFacilitySportName(booking.getFacilityId())
                 : booking.getSportName();
-        return BookingResponseDTO.fromEntity(booking, venueName, sportName);
+        if (sportName == null || sportName.isBlank() || "Unknown Sport".equalsIgnoreCase(sportName) || "Unknown".equalsIgnoreCase(sportName)) {
+            sportName = "General Sport";
+        }
+        List<String> participants = getParticipants(booking);
+        List<String> pendingInvites = getPendingInvites(booking);
+        List<String> pendingJoinRequests = getPendingJoinRequests(booking);
+        String joinLink = booking.getJoinCode() == null || booking.getJoinCode().isBlank()
+                ? null
+                : frontendUrl + "/games/join/" + booking.getJoinCode();
+
+        return new BookingResponseDTO(
+                booking.getId(),
+                booking.getUserId(),
+                booking.getVenueId(),
+                venueName,
+                sportName,
+                booking.getBookingDate(),
+                booking.getTimeSlot(),
+                booking.getAmount(),
+                booking.getUserId(),
+                participants,
+                parseSplitPercentages(booking),
+                pendingInvites,
+                pendingJoinRequests,
+                booking.getPlayEnabled(),
+                booking.getPlayVisibility() != null ? booking.getPlayVisibility().name() : null,
+                booking.getMaxPlayers(),
+                participants.size(),
+                booking.getSplitAmount(),
+                booking.getJoinCode(),
+                joinLink,
+                booking.getRazorpayOrderId(),
+                booking.getRazorpayPaymentId(),
+                booking.getStatus().toString(),
+                booking.getCreatedAt(),
+                booking.getUpdatedAt());
+    }
+
+    private Booking.PlayVisibility resolvePlayVisibility(String playVisibility) {
+        if (playVisibility == null || playVisibility.isBlank()) {
+            return Booking.PlayVisibility.PRIVATE;
+        }
+
+        try {
+            return Booking.PlayVisibility.valueOf(playVisibility.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Booking.PlayVisibility.PRIVATE;
+        }
+    }
+
+    private Integer resolveMaxPlayers(Integer maxPlayers) {
+        return maxPlayers != null && maxPlayers > 1 ? maxPlayers : 2;
+    }
+
+    private BigDecimal resolveSplitAmount(BigDecimal amount, Integer maxPlayers, Booking.PlayVisibility playVisibility) {
+        if (amount == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (playVisibility != Booking.PlayVisibility.PUBLIC) {
+            return amount;
+        }
+
+        int players = resolveMaxPlayers(maxPlayers);
+        return amount.divide(BigDecimal.valueOf(players), 2, RoundingMode.HALF_UP);
+    }
+
+    private void validateBookingStartNotPassed(LocalDate bookingDate, String timeSlot) {
+        if (bookingDate == null || timeSlot == null || !timeSlot.contains("-")) {
+            return;
+        }
+
+        String startTime = timeSlot.split("-")[0].trim();
+        LocalTime slotStart = LocalTime.parse(startTime);
+        LocalDateTime bookingStart = LocalDateTime.of(bookingDate, slotStart);
+
+        if (!LocalDateTime.now().isBefore(bookingStart)) {
+            throw new SlotNotAvailableException("Cannot create or update play after slot start time");
+        }
+    }
+
+    private boolean isPlayExpired(Booking booking) {
+        if (booking == null || booking.getBookingDate() == null || booking.getTimeSlot() == null || !booking.getTimeSlot().contains("-")) {
+            return true;
+        }
+
+        String startTime = booking.getTimeSlot().split("-")[0].trim();
+        LocalTime slotStart = LocalTime.parse(startTime);
+        LocalDateTime bookingStart = LocalDateTime.of(booking.getBookingDate(), slotStart);
+        return !LocalDateTime.now().isBefore(bookingStart);
+    }
+
+    public List<String> getPlayParticipants(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new ResourceNotFoundException("Play not enabled for booking: " + bookingId);
+        }
+
+        return getParticipants(booking);
+    }
+
+    public BookingResponseDTO removeParticipantFromPlay(Long bookingId, String participantUserId, String hostUserId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new SlotNotAvailableException("Play is not enabled for this booking");
+        }
+
+        if (!Objects.equals(booking.getUserId(), hostUserId)) {
+            throw new SlotNotAvailableException("Only play host can manage participants");
+        }
+
+        if (booking.getUserId().equals(participantUserId)) {
+            throw new SlotNotAvailableException("Host cannot be removed from own play");
+        }
+
+        List<String> participants = getParticipants(booking);
+        boolean removed = participants.remove(participantUserId);
+
+        if (!removed) {
+            throw new ResourceNotFoundException("Participant not found in this play");
+        }
+
+        booking.setJoinedUserIds(String.join(",", participants));
+        booking.setJoinedPlayers(participants.size());
+        booking.setSplitAmount(resolveSplitAmount(booking.getAmount(), booking.getMaxPlayers(), booking.getPlayVisibility()));
+        booking.setPaymentSplitPercentages(serializeSplitPercentages(buildEvenSplitPercentages(participants)));
+
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    public BookingResponseDTO addParticipantToPlay(Long bookingId, String participantUserId, String hostUserId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new SlotNotAvailableException("Play is not enabled for this booking");
+        }
+
+        if (!Objects.equals(booking.getUserId(), hostUserId)) {
+            throw new SlotNotAvailableException("Only play host can manage participants");
+        }
+
+        if (participantUserId == null || participantUserId.isBlank()) {
+            throw new SlotNotAvailableException("Participant email or user ID is required");
+        }
+
+        List<String> participants = getParticipants(booking);
+        List<String> pendingInvites = getPendingInvites(booking);
+        List<String> pendingRequests = getPendingJoinRequests(booking);
+
+        if (participants.contains(participantUserId)) {
+            throw new SlotNotAvailableException("User already joined this play session");
+        }
+
+        if (pendingInvites.contains(participantUserId)) {
+            throw new SlotNotAvailableException("Invite already pending for this user");
+        }
+
+        if (pendingRequests.contains(participantUserId)) {
+            throw new SlotNotAvailableException("User already has a pending public join request");
+        }
+
+        int maxPlayers = booking.getMaxPlayers() != null && booking.getMaxPlayers() > 0 ? booking.getMaxPlayers() : 2;
+        if (participants.size() >= maxPlayers) {
+            throw new SlotNotAvailableException("This play session is already full");
+        }
+
+        pendingInvites.add(participantUserId);
+        booking.setPendingInviteUserIds(serializeIdentifierList(pendingInvites));
+
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    public BookingResponseDTO updatePlaySplitPercentages(Long bookingId, String hostUserId, Map<String, BigDecimal> splitPercentages) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Boolean.TRUE.equals(booking.getPlayEnabled())) {
+            throw new SlotNotAvailableException("Play is not enabled for this booking");
+        }
+
+        if (!Objects.equals(booking.getUserId(), hostUserId)) {
+            throw new SlotNotAvailableException("Only play host can manage payment splits");
+        }
+
+        List<String> participants = getParticipants(booking);
+        if (splitPercentages == null || splitPercentages.isEmpty()) {
+            throw new SlotNotAvailableException("Split percentages are required");
+        }
+
+        Set<String> expectedUsers = new LinkedHashSet<>(participants);
+        Set<String> providedUsers = new LinkedHashSet<>();
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (Map.Entry<String, BigDecimal> entry : splitPercentages.entrySet()) {
+            String userId = entry.getKey();
+            BigDecimal percentage = entry.getValue();
+
+            if (userId == null || userId.isBlank()) {
+                throw new SlotNotAvailableException("Split user ID cannot be empty");
+            }
+
+            if (!expectedUsers.contains(userId)) {
+                throw new SlotNotAvailableException("Split contains non-participant user: " + userId);
+            }
+
+            if (percentage == null || percentage.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new SlotNotAvailableException("Split percentage must be greater than 0 for user: " + userId);
+            }
+
+            providedUsers.add(userId);
+            total = total.add(percentage);
+        }
+
+        if (!providedUsers.equals(expectedUsers)) {
+            throw new SlotNotAvailableException("Split percentages must include every participant exactly once");
+        }
+
+        if (total.compareTo(BigDecimal.valueOf(100)) != 0) {
+            throw new SlotNotAvailableException("Split percentages must total 100");
+        }
+
+        booking.setPaymentSplitPercentages(serializeSplitPercentages(splitPercentages));
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    private List<String> getParticipants(Booking booking) {
+        if (booking == null) {
+            return new ArrayList<>();
+        }
+
+        String raw = booking.getJoinedUserIds();
+        if (raw == null || raw.isBlank()) {
+            return new ArrayList<>(List.of(booking.getUserId()));
+        }
+
+        Set<String> participants = new LinkedHashSet<>();
+        Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .forEach(participants::add);
+
+        if (booking.getUserId() != null && !booking.getUserId().isBlank()) {
+            participants.add(booking.getUserId());
+        }
+
+        return new ArrayList<>(participants);
+    }
+
+    private List<String> getPendingInvites(Booking booking) {
+        return parseIdentifierList(booking.getPendingInviteUserIds());
+    }
+
+    private List<String> getPendingJoinRequests(Booking booking) {
+        return parseIdentifierList(booking.getPendingJoinRequestUserIds());
+    }
+
+    private List<String> parseIdentifierList(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        Set<String> values = new LinkedHashSet<>();
+        Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .forEach(values::add);
+
+        return new ArrayList<>(values);
+    }
+
+    private String serializeIdentifierList(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+
+        return values.stream()
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .reduce((left, right) -> left + "," + right)
+                .orElse("");
+    }
+
+    private String resolveInviteIdentifier(List<String> pendingInvites, String userId, String email) {
+        if (pendingInvites == null || pendingInvites.isEmpty()) {
+            return null;
+        }
+
+        String normalizedUserId = userId == null ? "" : userId.trim();
+        String normalizedEmail = email == null ? "" : email.trim();
+
+        for (String pendingInvite : pendingInvites) {
+            if (pendingInvite == null || pendingInvite.isBlank()) {
+                continue;
+            }
+
+            if (!normalizedUserId.isBlank() && pendingInvite.equals(normalizedUserId)) {
+                return pendingInvite;
+            }
+
+            if (!normalizedEmail.isBlank() && pendingInvite.equalsIgnoreCase(normalizedEmail)) {
+                return pendingInvite;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isSessionVisibleToUser(Booking booking, String viewerUserId, String viewerEmail) {
+        if (booking.getPlayVisibility() == Booking.PlayVisibility.PUBLIC) {
+            return true;
+        }
+
+        if (viewerUserId == null || viewerUserId.isBlank()) {
+            return false;
+        }
+
+        if (viewerUserId.equals(booking.getUserId())) {
+            return true;
+        }
+
+        String normalizedEmail = viewerEmail == null ? "" : viewerEmail.trim().toLowerCase();
+
+        return getParticipants(booking).stream().anyMatch(value -> matchesIdentity(value, viewerUserId, normalizedEmail))
+                || getPendingInvites(booking).stream().anyMatch(value -> matchesIdentity(value, viewerUserId, normalizedEmail))
+                || getPendingJoinRequests(booking).stream().anyMatch(value -> matchesIdentity(value, viewerUserId, normalizedEmail));
+    }
+
+    private boolean matchesIdentity(String candidate, String viewerUserId, String viewerEmail) {
+        if (candidate == null || candidate.isBlank()) {
+            return false;
+        }
+
+        String normalizedCandidate = candidate.trim();
+        if (viewerUserId != null && !viewerUserId.isBlank() && normalizedCandidate.equals(viewerUserId.trim())) {
+            return true;
+        }
+
+        return viewerEmail != null && !viewerEmail.isBlank() && normalizedCandidate.equalsIgnoreCase(viewerEmail);
+    }
+
+    private Map<String, BigDecimal> buildEvenSplitPercentages(List<String> participants) {
+        Map<String, BigDecimal> result = new LinkedHashMap<>();
+        if (participants == null || participants.isEmpty()) {
+            return result;
+        }
+
+        BigDecimal hundred = BigDecimal.valueOf(100);
+        BigDecimal base = hundred.divide(BigDecimal.valueOf(participants.size()), 2, RoundingMode.DOWN);
+        BigDecimal running = BigDecimal.ZERO;
+
+        for (int index = 0; index < participants.size(); index += 1) {
+            String userId = participants.get(index);
+            BigDecimal value = index == participants.size() - 1 ? hundred.subtract(running) : base;
+            result.put(userId, value);
+            running = running.add(value);
+        }
+
+        return result;
+    }
+
+    private Map<String, BigDecimal> parseSplitPercentages(Booking booking) {
+        Map<String, BigDecimal> parsed = new LinkedHashMap<>();
+        String raw = booking.getPaymentSplitPercentages();
+        if (raw == null || raw.isBlank()) {
+            return buildEvenSplitPercentages(getParticipants(booking));
+        }
+
+        for (String chunk : raw.split(",")) {
+            String value = chunk.trim();
+            if (value.isBlank() || !value.contains(":")) {
+                continue;
+            }
+
+            String[] pair = value.split(":", 2);
+            String userId = pair[0].trim();
+            String percent = pair[1].trim();
+            if (userId.isBlank() || percent.isBlank()) {
+                continue;
+            }
+
+            try {
+                parsed.put(userId, new BigDecimal(percent));
+            } catch (NumberFormatException ignored) {
+                // skip malformed persisted value
+            }
+        }
+
+        if (parsed.isEmpty()) {
+            return buildEvenSplitPercentages(getParticipants(booking));
+        }
+
+        return parsed;
+    }
+
+    private String serializeSplitPercentages(Map<String, BigDecimal> splitPercentages) {
+        if (splitPercentages == null || splitPercentages.isEmpty()) {
+            return "";
+        }
+
+        return splitPercentages.entrySet().stream()
+                .map(entry -> entry.getKey() + ":" + entry.getValue().stripTrailingZeros().toPlainString())
+                .reduce((left, right) -> left + "," + right)
+                .orElse("");
     }
 
     /**

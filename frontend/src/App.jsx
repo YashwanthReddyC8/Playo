@@ -9,6 +9,7 @@ import CenterApplications from "./Pages/CenterApplications";
 import "./App.css";
 import Trainers from "./Pages/trainer/Trainer";
 import Play from "./Pages/play/Play";
+import JoinPlay from "./Pages/play/JoinPlay";
 import Book from "./Pages/book/Book";
 import VenueDetails from "./Pages/book/venues/VenueDetails";
 import CoachingDetails from "./Pages/book/coaching/CoachingDetails";
@@ -41,6 +42,7 @@ function App() {
 
       <Route element={<Layout />}>
         <Route path="/games" element={<Play />} />
+        <Route path="/games/join/:joinCode" element={<JoinPlay />} />
         <Route path="/venues" element={<Book />} />
         <Route path="/trainers" element={<Trainers />} />
         <Route path="/myprofile" element={<Player />} />

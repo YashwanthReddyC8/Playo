@@ -37,6 +37,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      */
     Optional<Booking> findByRazorpayPaymentId(String razorpayPaymentId);
 
+        Optional<Booking> findByJoinCode(String joinCode);
+
+        List<Booking> findByStatusOrderByCreatedAtDesc(Booking.BookingStatus status);
+
+        List<Booking> findByPlayEnabledTrueAndStatusOrderByCreatedAtDesc(Booking.BookingStatus status);
+
+        List<Booking> findByPlayVisibilityAndStatusOrderByCreatedAtDesc(
+            Booking.PlayVisibility playVisibility,
+            Booking.BookingStatus status);
+
     /**
      * Find confirmed bookings for a specific date and venue
      */
