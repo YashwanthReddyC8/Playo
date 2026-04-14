@@ -1,8 +1,16 @@
 import { useState } from "react";
 
-export default function HeroSearch({ onSearchChange, onSportFilter }) {
+export default function HeroSearch({
+  onSearchChange,
+  onSportFilter,
+  sportOptions = ["All Sports"],
+  currentSport = "All Sports",
+}) {
   const [venueName, setVenueName] = useState("");
   const [selectedSport, setSelectedSport] = useState("All Sports");
+  const headingText = currentSport && currentSport !== "All Sports"
+    ? `${currentSport} Venues: Discover and Book`
+    : "Sports Venues Near You: Discover and Book";
 
   const handleVenueSearch = (e) => {
     setVenueName(e.target.value);
@@ -18,7 +26,7 @@ export default function HeroSearch({ onSearchChange, onSportFilter }) {
     <div className="bg-white border-b">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
         <h1 className="text-base sm:text-lg md:text-xl font-semibold mb-3">
-          Sports Venues in Chengicherla: Discover and Book
+          {headingText}
         </h1>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
@@ -32,10 +40,9 @@ export default function HeroSearch({ onSearchChange, onSportFilter }) {
             value={selectedSport}
             onChange={handleSportFilter}
           >
-            <option>All Sports</option>
-            <option>Badminton</option>
-            <option>Cricket</option>
-            <option>Football</option>
+            {sportOptions.map((sport) => (
+              <option key={sport} value={sport}>{sport}</option>
+            ))}
           </select>
         </div>
       </div>

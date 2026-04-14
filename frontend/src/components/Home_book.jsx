@@ -1,13 +1,44 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Section from "./Section";
+import axiosInstance from "../api/axios";
 
 function Home_book() {
-  const venues = [
-    { id: 1, name: "RSA Ravi's Turf", dist: "5 km", price: "₹2180/hr", rating: 4.7, img: "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?w=800" },
-    { id: 2, name: "Game Theory - Joseph's", dist: "4.1 km", price: "₹1200/hr", rating: 4.2, img: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800" },
-    { id: 3, name: "Wellness Sports Inc", dist: "2.7 km", price: "₹900/hr", rating: 4.3, img: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800" },
-    { id: 4, name: "Hatchback Arena", dist: "6.2 km", price: "₹1500/hr", rating: 4.1, img: "https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?w=800" },
-  ];
+  const navigate = useNavigate();
+  const [venues, setVenues] = useState([]);
+
+  useEffect(() => {
+    axiosInstance.get("/api/owners/centers/public/all")
+      .then((res) => {
+        const mapped = (res.data || []).map((center) => {
+          const facilities = Array.isArray(center.facilities) ? center.facilities : [];
+          const slotPrices = facilities.flatMap((facility) =>
+            Array.isArray(facility?.slots)
+              ? facility.slots
+                  .map((slot) => Number(slot?.price))
+                  .filter((price) => Number.isFinite(price) && price > 0)
+              : []
+          );
+          const minPrice = slotPrices.length > 0 ? Math.min(...slotPrices) : null;
+
+          return {
+            id: center.id,
+            name: center.name,
+            dist: center.city || "Unknown",
+            price: minPrice ? `₹${minPrice}/slot` : "Price unavailable",
+            rating: center.rating || 4.5,
+            img: center.imageUrl || "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?w=800",
+          };
+        });
+
+        setVenues(mapped.slice(0, 4));
+      })
+      .catch(() => {
+        setVenues([]);
+      });
+  }, []);
+
+  const visibleVenues = useMemo(() => venues.slice(0, 4), [venues]);
 
   return (
     <Section title="Book Venues" action="SEE ALL VENUES">
@@ -21,9 +52,10 @@ function Home_book() {
           gap-4 sm:gap-6
         "
       >
-        {venues.map((v) => (
+        {visibleVenues.map((v) => (
           <div
             key={v.id}
+            onClick={() => navigate(`/venues/venue/${v.id}`)}
             className="
               bg-white rounded-2xl overflow-hidden
               border border-gray-200
@@ -61,6 +93,9 @@ function Home_book() {
           </div>
         ))}
       </div>
+      {visibleVenues.length === 0 && (
+        <div className="text-sm text-gray-500">No venues available right now.</div>
+      )}
     </Section>
   );
 }

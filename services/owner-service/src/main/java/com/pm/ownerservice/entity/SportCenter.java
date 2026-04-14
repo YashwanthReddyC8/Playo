@@ -1,9 +1,26 @@
 package com.pm.ownerservice.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "sport_centers")
@@ -18,24 +35,25 @@ public class SportCenter {
     private Long id;
 
     @Column(nullable = false)
+    // Note: owner_id validated via JWT token authentication; no FK constraint
     private Long ownerId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String name;
 
     @Column(length = 500)
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String address;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String city;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String state;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String postalCode;
 
     @Column(nullable = false)
@@ -44,20 +62,27 @@ public class SportCenter {
     @Column(nullable = false)
     private Double longitude;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private String phoneNumber;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String email;
 
-    @Column
+    @Column(length = 500)
     private String imageUrl;
 
-    @Column
-    private Integer capacity;
+    @Column(name = "inactive_dates", length = 4000)
+    private String inactiveDates;
 
-    @Column
-    private String facilities;
+    @Column(name = "total_courts", nullable = false)
+    @Builder.Default
+    private Integer totalCourts = 1;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "sportCenter", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<SportFacility> facilities = new ArrayList<>();
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

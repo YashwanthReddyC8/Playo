@@ -121,4 +121,14 @@ public class SportCenterController {
         List<SportCenterResponse> centers = sportCenterService.getAllCenters();
         return ResponseEntity.ok(centers);
     }
+
+    /**
+     * GET /api/owners/centers/public/{centerId} - Get a specific center (public, no auth required)
+     */
+    @GetMapping("/public/{centerId}")
+    public ResponseEntity<SportCenterResponse> getCenterByIdPublic(@PathVariable Long centerId) {
+        log.info("Fetching center {} (public)", centerId);
+        SportCenterResponse center = sportCenterService.getPublicCenterById(centerId);
+        return ResponseEntity.ok(center);
+    }
 }

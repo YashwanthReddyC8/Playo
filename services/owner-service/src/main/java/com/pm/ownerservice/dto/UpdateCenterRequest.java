@@ -1,6 +1,13 @@
 package com.pm.ownerservice.dto;
 
-import jakarta.validation.constraints.*;
+import java.util.List;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record UpdateCenterRequest(
 
@@ -26,7 +33,7 @@ public record UpdateCenterRequest(
 
         String imageUrl,
 
-        Integer capacity,
+        List<String> inactiveDates,
 
-        String facilities) {
+        @Valid List<SportFacilityRequest> facilities) {
 }

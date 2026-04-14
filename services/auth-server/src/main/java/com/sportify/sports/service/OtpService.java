@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.util.Random;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,22 +29,21 @@ public class OtpService {
     /**
      * Generate and send OTP to email
      */
+    @Transactional
     public void sendOtp(String email) throws Exception {
         try {
-            // Delete previous OTP if exists
-            otpRepository.deleteByEmail(email);
-
             // Generate OTP
             String otp = generateOtp();
 
-            // Create OTP verification record
-            OtpVerification otpVerification = OtpVerification.builder()
-                    .email(email)
-                    .otp(otp)
-                    .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
-                    .attempts(0)
-                    .isVerified(false)
-                    .build();
+            // Reuse the existing record when the email already has a pending OTP
+            OtpVerification otpVerification = otpRepository.findByEmail(email)
+                .orElseGet(OtpVerification::new);
+
+            otpVerification.setEmail(email);
+            otpVerification.setOtp(otp);
+            otpVerification.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES));
+            otpVerification.setAttempts(0);
+            otpVerification.setIsVerified(false);
 
             otpRepository.save(otpVerification);
 
@@ -66,6 +66,7 @@ public class OtpService {
     /**
      * Verify OTP
      */
+    @Transactional
     public boolean verifyOtp(String email, String otp) throws Exception {
         OtpVerification otpVerification = otpRepository.findByEmailAndIsVerifiedFalse(email)
                 .orElseThrow(() -> new Exception("OTP not found for email: " + email));
@@ -114,6 +115,7 @@ public class OtpService {
     /**
      * Clean up verified OTP after account creation
      */
+    @Transactional
     public void deleteOtp(String email) {
         otpRepository.deleteByEmail(email);
         log.info("OTP deleted for: {}", email);

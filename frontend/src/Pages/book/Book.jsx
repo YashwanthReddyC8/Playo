@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Footer from "../../components/Footer";
+import axiosInstance from "../../api/axios";
 
 import HeroSearch from "./HeroSearch";
 import Tabs from "./Tabs";
@@ -10,21 +13,44 @@ import CoachingList from "./coaching/CoachingList";
 import EventsList from "./events/EventsList";
 import MembershipList from "./memberships/MembershipList";
 
-import { venues } from "./venues/data";
-import { coachingCenters } from "./coaching/data";
-import { events } from "./events/data";
-import { memberships } from "./memberships/data";
-
 export default function Book() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("venues");
   const [heroSearchTerm, setHeroSearchTerm] = useState("");
-  const [heroSportFilter, setHeroSportFilter] = useState("All Sports");
+  const querySport = searchParams.get("sport") || "All Sports";
+  const [heroSportFilter, setHeroSportFilter] = useState(querySport);
+  const [sportOptions, setSportOptions] = useState(["All Sports"]);
+  const [venueCount, setVenueCount] = useState(0);
+
+  useEffect(() => {
+    setHeroSportFilter(querySport);
+  }, [querySport]);
+
+  useEffect(() => {
+    axiosInstance.get("/api/owners/centers/public/all")
+      .then((res) => {
+        const centers = res.data || [];
+        setVenueCount(centers.length);
+
+        const sports = centers
+          .flatMap((center) => Array.isArray(center?.facilities) ? center.facilities : [])
+          .map((facility) => facility?.sportType)
+          .filter(Boolean);
+
+        const uniqueSports = Array.from(new Set(sports)).sort((a, b) => a.localeCompare(b));
+        setSportOptions(["All Sports", ...uniqueSports]);
+      })
+      .catch(() => {
+        setVenueCount(0);
+        setSportOptions(["All Sports"]);
+      });
+  }, []);
 
   const counts = {
-    venues: venues.length,
-    coaching: coachingCenters.length,
-    events: events.length,
-    memberships: memberships.length,
+    venues: venueCount,
+    coaching: 0,
+    events: 0,
+    memberships: 0,
   };
 
   return (
@@ -32,6 +58,8 @@ export default function Book() {
       <HeroSearch 
         onSearchChange={setHeroSearchTerm}
         onSportFilter={setHeroSportFilter}
+        sportOptions={sportOptions}
+        currentSport={heroSportFilter}
       />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4">

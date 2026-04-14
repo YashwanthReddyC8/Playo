@@ -113,6 +113,7 @@ export default function ChangePassword() {
                             name="currentPassword"
                             value={formData.currentPassword}
                             onChange={handleChange}
+                            required
                             placeholder="••••••••"
                             className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.currentPassword
                                     ? "border-red-500"
@@ -152,6 +153,7 @@ export default function ChangePassword() {
                             name="newPassword"
                             value={formData.newPassword}
                             onChange={handleChange}
+                            required
                             placeholder="••••••••"
                             className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.newPassword
                                     ? "border-red-500"
@@ -189,6 +191,7 @@ export default function ChangePassword() {
                             name="confirmPassword"
                             value={formData.confirmPassword}
                             onChange={handleChange}
+                            required
                             placeholder="••••••••"
                             className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.confirmPassword
                                     ? "border-red-500"

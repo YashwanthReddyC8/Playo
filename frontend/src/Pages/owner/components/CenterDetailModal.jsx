@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MapPin, Phone, Mail, Zap, Users, Calendar } from 'lucide-react';
+import { X, MapPin, Phone, Mail, Zap, Calendar } from 'lucide-react';
 
 export default function CenterDetailModal({ isOpen, onClose, center = null }) {
     if (!isOpen || !center) return null;
@@ -94,29 +94,46 @@ export default function CenterDetailModal({ isOpen, onClose, center = null }) {
                         </div>
                     </div>
 
-                    {/* Facilities & Capacity */}
-                    <div className="grid grid-cols-2 gap-4">
-                        {center.facilities && (
+                    {/* Facilities */}
+                    <div className="grid grid-cols-1 gap-4">
+                        {Array.isArray(center.facilities) && center.facilities.length > 0 && (
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
                                     <Zap size={20} className="text-orange-600" />
                                     Facilities
                                 </h3>
-                                <p className="bg-gray-50 p-3 rounded-lg text-gray-700">
-                                    {center.facilities}
-                                </p>
+                                <div className="space-y-3">
+                                    {center.facilities.map((facility) => (
+                                        <div key={facility.id || facility.sportType} className="bg-gray-50 p-4 rounded-lg text-gray-700">
+                                            <div className="font-semibold text-gray-800">{facility.sportType}</div>
+                                            <div className="text-sm">{facility.totalCourts} courts</div>
+                                            {Array.isArray(facility.slots) && facility.slots.length > 0 && (
+                                                <div className="mt-2 space-y-2 text-sm text-gray-600">
+                                                    {facility.slots.map((slot) => (
+                                                        <div key={slot.id || `${slot.startTime}-${slot.endTime}`} className="rounded-md bg-white px-3 py-2 border border-gray-200">
+                                                            <div className="font-medium text-gray-700">
+                                                                {Array.isArray(slot.daysOfWeek) ? slot.daysOfWeek.join(', ') : 'MONDAY'}
+                                                            </div>
+                                                            <div>
+                                                                {slot.startTime} - {slot.endTime} • ₹{slot.price} • max {slot.maxPlayers}
+                                                            </div>
+                                                            <div className={`text-xs font-semibold ${slot.isActive === false ? 'text-red-600' : 'text-green-600'}`}>
+                                                                {slot.isActive === false ? 'Closed on selected days' : 'Open for booking'}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
-                        {center.capacity && (
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                    <Users size={20} className="text-blue-600" />
-                                    Capacity
-                                </h3>
-                                <p className="bg-gray-50 p-3 rounded-lg text-gray-700">
-                                    {center.capacity} people
-                                </p>
+                        {Array.isArray(center.inactiveDates) && center.inactiveDates.length > 0 && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                <div className="font-semibold">Center-level closed dates</div>
+                                <div className="mt-1">{center.inactiveDates.join(', ')}</div>
                             </div>
                         )}
                     </div>

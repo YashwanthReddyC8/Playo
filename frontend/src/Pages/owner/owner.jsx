@@ -79,7 +79,20 @@ export default function Owner() {
                 ...formData,
                 latitude: formData.latitude ? parseFloat(formData.latitude) : null,
                 longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-                capacity: formData.capacity ? parseInt(formData.capacity, 10) : null,
+                inactiveDates: Array.isArray(formData.inactiveDates) ? formData.inactiveDates : [],
+                facilities: (formData.facilities || []).map((facility) => ({
+                    ...facility,
+                    totalCourts: facility.totalCourts ? parseInt(facility.totalCourts, 10) : 1,
+                    slots: (facility.slots || []).map((slot) => ({
+                        ...slot,
+                        daysOfWeek: Array.isArray(slot.daysOfWeek) ? slot.daysOfWeek : ['MONDAY'],
+                        isActive: slot.isActive !== false,
+                        startTime: slot.startTime ? String(slot.startTime).slice(0, 5) : '06:00',
+                        endTime: slot.endTime ? String(slot.endTime).slice(0, 5) : '07:00',
+                        price: slot.price ? parseFloat(slot.price) : null,
+                        maxPlayers: slot.maxPlayers ? parseInt(slot.maxPlayers, 10) : null,
+                    })),
+                })),
             };
 
             if (editingCenter) {

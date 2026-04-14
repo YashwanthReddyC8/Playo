@@ -1,14 +1,24 @@
 package com.pm.ownerservice.entity;
 
-import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "bookings")
@@ -27,6 +37,15 @@ public class Booking {
 
     @Column(nullable = false)
     private Long venueId;
+
+    @Column(name = "facility_id")
+    private Long facilityId;
+
+    @Column(name = "time_slot_id")
+    private Long timeSlotId;
+
+    @Column(nullable = false)
+    private String sportName;
 
     @Column(nullable = false)
     private LocalDate bookingDate;
@@ -52,6 +71,9 @@ public class Booking {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Version
+    private Long version;
 
     @PrePersist
     protected void onCreate() {

@@ -5,10 +5,12 @@ import com.pm.ownerservice.dto.BookingResponseDTO;
 import com.pm.ownerservice.dto.PaymentVerificationDTO;
 import com.pm.ownerservice.dto.RazorpayOrderDTO;
 import com.pm.ownerservice.entity.Booking;
+import com.pm.ownerservice.entity.TimeSlot;
 import com.pm.ownerservice.exception.PaymentFailedException;
 import com.pm.ownerservice.exception.ResourceNotFoundException;
 import com.pm.ownerservice.exception.SlotNotAvailableException;
 import com.pm.ownerservice.repository.BookingRepository;
+import com.pm.ownerservice.repository.TimeSlotRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Utils;
@@ -19,7 +21,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.EnumSet;
 import java.util.List;
 
 @Service
@@ -31,13 +37,12 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final RazorpayClient razorpayClient;
     private final SportCenterService sportCenterService;
+    private final TimeSlotRepository timeSlotRepository;
 
     @Value("${razorpay.key-secret}")
     private String razorpayKeySecret;
 
     private static final String CURRENCY = "INR";
-    private static final int MAX_SLOTS_PER_DATETIME = 1; // One booking per slot
-
     /**
      * Create a booking order and call Razorpay API
      * 
@@ -51,12 +56,18 @@ public class BookingService {
                 request.userId(), request.venueId(), request.bookingDate(), request.timeSlot());
 
         // Check slot availability
-        checkSlotAvailability(request.venueId(), request.bookingDate(), request.timeSlot());
+        validateCenterInactiveDate(request.venueId(), request.bookingDate());
+        validateSelectedTimeSlot(request);
+        validateInactiveDate(request.timeSlotId(), request.bookingDate());
+        checkSlotAvailability(request.venueId(), request.bookingDate(), request.timeSlot(), request.timeSlotId());
 
         // Create booking with PENDING status
         Booking booking = Booking.builder()
                 .userId(request.userId())
                 .venueId(request.venueId())
+                .facilityId(request.facilityId())
+                .timeSlotId(request.timeSlotId())
+                .sportName(request.sportName())
                 .bookingDate(request.bookingDate())
                 .timeSlot(request.timeSlot())
                 .amount(request.amount())
@@ -130,7 +141,7 @@ public class BookingService {
             Booking confirmedBooking = bookingRepository.save(booking);
             log.info("Booking {} confirmed with payment: {}", booking.getId(), request.razorpayPaymentId());
 
-            return BookingResponseDTO.fromEntity(confirmedBooking);
+            return mapToResponseDTO(confirmedBooking);
 
         } catch (Exception e) {
             log.error("Payment verification failed for order {}: {}", request.razorpayOrderId(), e.getMessage());
@@ -145,7 +156,7 @@ public class BookingService {
         log.info("Fetching bookings for user: {}", userId);
         return bookingRepository.findByUserId(userId)
                 .stream()
-                .map(BookingResponseDTO::fromEntity)
+                .map(this::mapToResponseDTO)
                 .toList();
     }
 
@@ -156,7 +167,7 @@ public class BookingService {
         log.info("Fetching bookings for venue: {}", venueId);
         return bookingRepository.findByVenueId(venueId)
                 .stream()
-                .map(BookingResponseDTO::fromEntity)
+                .map(this::mapToResponseDTO)
                 .toList();
     }
 
@@ -167,7 +178,7 @@ public class BookingService {
         log.info("Fetching booking: {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
-        return BookingResponseDTO.fromEntity(booking);
+        return mapToResponseDTO(booking);
     }
 
     /**
@@ -178,34 +189,172 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
 
+        validateCancellationWindow(booking);
+
         booking.setStatus(Booking.BookingStatus.CANCELLED);
         Booking cancelledBooking = bookingRepository.save(booking);
 
         log.info("Booking {} cancelled", bookingId);
-        return BookingResponseDTO.fromEntity(cancelledBooking);
+        return mapToResponseDTO(cancelledBooking);
     }
 
     // Private helper methods
+
+    private BookingResponseDTO mapToResponseDTO(Booking booking) {
+        String venueName = sportCenterService.getCenterNameById(booking.getVenueId());
+        String sportName = booking.getFacilityId() != null
+                ? sportCenterService.getFacilitySportName(booking.getFacilityId())
+                : booking.getSportName();
+        return BookingResponseDTO.fromEntity(booking, venueName, sportName);
+    }
 
     /**
      * Check if slot is available for the given venue, date, and time
      * 
      * @throws SlotNotAvailableException if slot is already booked
      */
-    private void checkSlotAvailability(Long venueId, LocalDate bookingDate, String timeSlot) {
-        List<Booking> existingBookings = bookingRepository.findByVenueIdAndBookingDateAndStatus(
-                venueId, bookingDate, Booking.BookingStatus.CONFIRMED);
+    private void checkSlotAvailability(Long venueId, LocalDate bookingDate, String timeSlot, Long timeSlotId) {
+        long bookedCount = bookingRepository.countByVenueIdAndBookingDateAndTimeSlotAndStatusIn(
+                venueId,
+                bookingDate,
+                timeSlot,
+                EnumSet.of(Booking.BookingStatus.PENDING, Booking.BookingStatus.CONFIRMED));
 
-        boolean slotTaken = existingBookings.stream()
-                .anyMatch(b -> b.getTimeSlot().equals(timeSlot));
-
-        if (slotTaken) {
+        int totalCourts = resolveTotalCourtsForTimeSlot(timeSlotId);
+        if (bookedCount >= totalCourts) {
             log.warn("Slot {} on {}/{} is already booked for venue {}",
                     timeSlot, bookingDate, venueId);
             throw new SlotNotAvailableException("Time slot " + timeSlot + " is not available on " + bookingDate);
         }
 
-        log.debug("Slot {} is available for venue {} on {}", timeSlot, venueId, bookingDate);
+        log.debug("Slot {} has {} of {} courts booked for venue {} on {}",
+                timeSlot, bookedCount, totalCourts, venueId, bookingDate);
+    }
+
+    private int resolveTotalCourtsForTimeSlot(Long timeSlotId) {
+        if (timeSlotId == null) {
+            return 1;
+        }
+
+        return timeSlotRepository.findById(timeSlotId)
+                .map(timeSlot -> timeSlot.getSportFacility() != null ? timeSlot.getSportFacility().getTotalCourts() : 1)
+                .filter(count -> count != null && count > 0)
+                .orElse(1);
+    }
+
+    private void validateInactiveDate(Long timeSlotId, LocalDate bookingDate) {
+        if (timeSlotId == null || bookingDate == null) {
+            return;
+        }
+
+        TimeSlot timeSlot = timeSlotRepository.findById(timeSlotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Time slot not found: " + timeSlotId));
+
+        if (timeSlot.getIsActive() != null && !timeSlot.getIsActive()) {
+            throw new SlotNotAvailableException("Center is closed for this slot");
+        }
+
+        if (timeSlot.getInactiveDates() == null || timeSlot.getInactiveDates().isBlank()) {
+            return;
+        }
+
+        boolean inactiveDateSelected = java.util.Arrays.stream(timeSlot.getInactiveDates().split(","))
+                .map(String::trim)
+                .anyMatch(date -> date.equals(bookingDate.toString()));
+
+        if (inactiveDateSelected) {
+            throw new SlotNotAvailableException("Center is closed on " + bookingDate);
+        }
+    }
+
+    private void validateCenterInactiveDate(Long centerId, LocalDate bookingDate) {
+        if (sportCenterService.isCenterInactiveOnDate(centerId, bookingDate)) {
+            throw new SlotNotAvailableException("Center is closed on " + bookingDate);
+        }
+    }
+
+    private void validateSelectedTimeSlot(BookingRequestDTO request) {
+        if (request.timeSlotId() == null) {
+            return;
+        }
+
+        TimeSlot timeSlot = timeSlotRepository.findById(request.timeSlotId())
+                .orElseThrow(() -> new ResourceNotFoundException("Time slot not found: " + request.timeSlotId()));
+
+        Long centerId = timeSlot.getSportFacility().getSportCenter().getId();
+        if (!centerId.equals(request.venueId())) {
+            throw new SlotNotAvailableException("Selected slot does not belong to this center");
+        }
+
+        if (request.facilityId() != null && !timeSlot.getSportFacility().getId().equals(request.facilityId())) {
+            throw new SlotNotAvailableException("Selected slot does not belong to this sport facility");
+        }
+
+        validateTimeWindowWithinSlot(timeSlot, request.timeSlot());
+
+        String bookingDay = request.bookingDate().getDayOfWeek().name();
+        boolean dayAllowed = java.util.Arrays.stream(timeSlot.getDaysOfWeek().split(","))
+                .map(String::trim)
+                .anyMatch(day -> day.equalsIgnoreCase(bookingDay));
+
+        if (!dayAllowed) {
+            throw new SlotNotAvailableException("Selected slot is not active on " + bookingDay);
+        }
+
+        BigDecimal requestedAmount = request.amount();
+        if (requestedAmount == null || timeSlot.getPrice() == null || requestedAmount.compareTo(timeSlot.getPrice()) != 0) {
+            throw new SlotNotAvailableException("Price mismatch for selected slot");
+        }
+    }
+
+    private void validateTimeWindowWithinSlot(TimeSlot parentSlot, String requestedTimeSlot) {
+        if (requestedTimeSlot == null || !requestedTimeSlot.matches("\\d{2}:\\d{2}-\\d{2}:\\d{2}")) {
+            throw new SlotNotAvailableException("Invalid time slot format");
+        }
+
+        String[] range = requestedTimeSlot.split("-");
+        LocalTime requestedStart = LocalTime.parse(range[0]);
+        LocalTime requestedEnd = LocalTime.parse(range[1]);
+
+        if (!requestedEnd.isAfter(requestedStart)) {
+            throw new SlotNotAvailableException("Invalid time slot range");
+        }
+
+        long requestedMinutes = java.time.Duration.between(requestedStart, requestedEnd).toMinutes();
+        if (requestedMinutes != 60) {
+            throw new SlotNotAvailableException("Only 1-hour slots are allowed");
+        }
+
+        LocalTime slotStart = parentSlot.getStartTime();
+        LocalTime slotEnd = parentSlot.getEndTime();
+        boolean startsInside = !requestedStart.isBefore(slotStart);
+        boolean endsInside = !requestedEnd.isAfter(slotEnd);
+
+        if (!(startsInside && endsInside)) {
+            throw new SlotNotAvailableException("Selected time is outside configured slot window");
+        }
+    }
+
+    private void validateCancellationWindow(Booking booking) {
+        if (booking.getBookingDate() == null || booking.getTimeSlot() == null) {
+            return;
+        }
+
+        LocalDateTime bookingStart = LocalDateTime.of(booking.getBookingDate(), parseBookingStartTime(booking.getTimeSlot()));
+        LocalDateTime now = LocalDateTime.now();
+
+        if (!now.isBefore(bookingStart)) {
+            throw new SlotNotAvailableException("Booking can only be cancelled before the slot start time");
+        }
+    }
+
+    private LocalTime parseBookingStartTime(String timeSlot) {
+        if (timeSlot == null || !timeSlot.contains("-")) {
+            throw new SlotNotAvailableException("Invalid booking time slot format");
+        }
+
+        String startTime = timeSlot.split("-")[0].trim();
+        return LocalTime.parse(startTime);
     }
 
     /**

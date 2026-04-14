@@ -4,7 +4,7 @@ import axiosInstance from '../api/axios';
 import { useAuthStore } from '../stores/authStore';
 import { useNavigate } from 'react-router-dom';
 
-const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
+const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount, sportName, facilityId = null, timeSlotId = null }) => {
   const [loading, setLoading] = useState(false);
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -42,10 +42,13 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
     try {
       // 1. Create Order
       const { data } = await axiosInstance.post('/api/owners/bookings/create', {
-        userId: user.id || user.email,
+        userId: String(user.id || user.email || ''),
         venueId: parseInt(venueId),
+        facilityId,
+        timeSlotId,
         bookingDate: selectedDate,
         timeSlot: selectedSlot,
+        sportName,
         amount: amount
       });
 
@@ -55,7 +58,7 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
         amount: data.amount,
         currency: 'INR',
         name: 'Sportify',
-        description: `Booking for ${selectedDate} at ${selectedSlot}`,
+        description: `Booking for ${selectedDate} at ${selectedSlot} (${sportName})`,
         order_id: data.orderId || data.razorpayOrderId,
         handler: async function (response) {
           try {
@@ -87,7 +90,13 @@ const PaymentButton = ({ venueId, selectedDate, selectedSlot, amount }) => {
       paymentObject.open();
 
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to initiate booking. Slot might be taken.');
+      const message =
+        error?.response?.data?.message ||
+        (error?.response?.data?.messages
+          ? Object.values(error.response.data.messages)[0]
+          : null) ||
+        'Failed to initiate booking. Slot might be taken.';
+      toast.error(message);
       console.error(error);
     } finally {
       setLoading(false);

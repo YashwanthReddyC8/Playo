@@ -12,6 +12,8 @@ public record BookingResponseDTO(
         Long id,
         String userId,
         Long venueId,
+    String venueName,
+    String sportName,
         LocalDate bookingDate,
         String timeSlot,
         BigDecimal amount,
@@ -23,11 +25,13 @@ public record BookingResponseDTO(
     /**
      * Convert Booking entity to BookingResponseDTO
      */
-    public static BookingResponseDTO fromEntity(Booking booking) {
+    public static BookingResponseDTO fromEntity(Booking booking, String venueName, String sportName) {
         return new BookingResponseDTO(
                 booking.getId(),
                 booking.getUserId(),
                 booking.getVenueId(),
+                venueName,
+                sportName,
                 booking.getBookingDate(),
                 booking.getTimeSlot(),
                 booking.getAmount(),

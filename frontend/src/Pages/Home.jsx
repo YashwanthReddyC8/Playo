@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import LocationSearch from "../components/LocationSearch";
@@ -8,6 +9,7 @@ import Home_play from "../components/Home_Play.jsx";
 import Popular_games from "../components/Popular_games.jsx";
 
 function Home() {
+  const navigate = useNavigate();
   const [location, setLocation] = useState("");
   const target = useRef(null);
   const rotatingText = "YOUR ONE STOP PLATFORM●";
@@ -32,6 +34,10 @@ function Home() {
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(success, error, options);
   }, []);
+
+  const handleSportClick = (sportName) => {
+    navigate(`/venues?sport=${encodeURIComponent(sportName)}`);
+  };
 
   return (
     <div className="bg-white text-gray-800">
@@ -116,7 +122,7 @@ function Home() {
       <section className="space-y-20">
         <Home_book />
         <Home_play />
-        <Popular_games />
+        <Popular_games onSportClick={handleSportClick} />
       </section>
 
       <Footer />

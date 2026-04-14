@@ -57,17 +57,32 @@ export default function CenterCard({ center, onView, onBookings, onEdit, onDelet
                 </div>
 
                 {/* Facilities */}
-                {center.facilities && (
+                {Array.isArray(center.facilities) && center.facilities.length > 0 && (
                     <div className="mb-3">
                         <p className="text-xs font-semibold text-gray-600 mb-1">Facilities:</p>
-                        <p className="text-sm text-gray-700">{center.facilities}</p>
+                        <div className="space-y-2">
+                            {center.facilities.map((facility) => (
+                                <div key={facility.id || facility.sportType} className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                                    <div className="font-semibold text-gray-800">{facility.sportType}</div>
+                                    <div>{facility.totalCourts} courts</div>
+                                    {Array.isArray(facility.slots) && facility.slots.length > 0 && (
+                                        <div className="mt-2 text-xs text-gray-500">
+                                            {facility.slots.map((slot) => {
+                                                const daysLabel = Array.isArray(slot.daysOfWeek) ? slot.daysOfWeek.join(', ') : 'MONDAY';
+                                                const statusLabel = slot.isActive === false ? 'Closed' : 'Active';
+                                                return `${daysLabel}: ${slot.startTime} - ${slot.endTime} • ₹${slot.price} • max ${slot.maxPlayers} • ${statusLabel}`;
+                                            }).join(' | ')}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
-                {/* Capacity */}
-                {center.capacity && (
-                    <p className="text-sm text-gray-700 mb-3">
-                        <span className="font-semibold">Capacity:</span> {center.capacity} people
+                {Array.isArray(center.inactiveDates) && center.inactiveDates.length > 0 && (
+                    <p className="text-xs text-red-600 mb-3">
+                        Center closed on: {center.inactiveDates.join(', ')}
                     </p>
                 )}
 

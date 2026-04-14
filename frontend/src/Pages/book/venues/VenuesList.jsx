@@ -1,18 +1,57 @@
 import { useState, useEffect } from "react";
-import { venues as staticVenues } from "./data";
 import VenueCard from "./VenueCard";
 import { Search } from "lucide-react";
 import axiosInstance from "../../../api/axios";
 
 const PAGE = 6;
 
+const toRadians = (value) => (value * Math.PI) / 180;
+
+const haversineKm = (fromLat, fromLng, toLat, toLng) => {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(toLat - fromLat);
+  const dLng = toRadians(toLng - fromLng);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
 export default function VenuesList({ initialSearchTerm = "", initialSportFilter = "All Sports" }) {
   const [visible, setVisible] = useState(PAGE);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [sportFilter, setSportFilter] = useState(initialSportFilter);
-  const [allVenues, setAllVenues] = useState(staticVenues);
+  const [allVenues, setAllVenues] = useState([]);
   const [loadingVenues, setLoadingVenues] = useState(true);
   const [error, setError] = useState(null);
+  const [userCoords, setUserCoords] = useState(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      () => {
+        setUserCoords(null);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  }, []);
 
   // Fetch venues from API
   useEffect(() => {
@@ -23,26 +62,41 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
       .then(res => {
         console.log("✅ Venues fetched from API:", res.data);
         
-        const dynamicVenues = (res.data || []).map(center => ({
-          id: center.id,
-          title: center.name,
-          location: center.city || "Unknown",
-          rating: center.rating || 4.5,
-          reviews: center.reviews || 0,
-          price: center.price ? `₹${center.price}` : "₹₹",
-          sports: center.facilities ? center.facilities.split(",").map(s => s.trim()) : [],
-          image: center.imageUrl || "https://images.unsplash.com/photo-1547347298-4074fc3086f0?q=80&w=1200"
-        }));
+        const dynamicVenues = (res.data || []).map(center => {
+          const facilities = Array.isArray(center.facilities) ? center.facilities : [];
+          const sports = facilities
+            .map((facility) => facility?.sportType)
+            .filter(Boolean);
+          const slotPrices = facilities.flatMap((facility) =>
+            Array.isArray(facility?.slots)
+              ? facility.slots
+                  .map((slot) => Number(slot?.price))
+                  .filter((price) => Number.isFinite(price) && price > 0)
+              : []
+          );
+          const minPrice = slotPrices.length > 0 ? Math.min(...slotPrices) : null;
+
+          return {
+            id: center.id,
+            title: center.name,
+            location: center.city || "Unknown",
+            rating: center.rating || 4.5,
+            reviews: center.reviews || 0,
+            price: minPrice ? `₹${minPrice}` : "₹₹",
+            sports,
+            image: center.imageUrl || "https://images.unsplash.com/photo-1547347298-4074fc3086f0?q=80&w=1200",
+            latitude: Number(center.latitude),
+            longitude: Number(center.longitude),
+          };
+        });
         
-        // Merge dynamic venues with static venues (dynamic first for priority)
-        const merged = [...dynamicVenues, ...staticVenues.filter(sv => !dynamicVenues.find(dv => dv.id === sv.id))];
-        setAllVenues(merged);
+        setAllVenues(dynamicVenues);
         setLoadingVenues(false);
       })
       .catch(err => {
-        console.warn("⚠️ Failed to fetch from API, using static venues only:", err.message);
-        setAllVenues(staticVenues);
-        setError(null); // Don't show error, just use static data
+        console.warn("⚠️ Failed to fetch venues:", err.message);
+        setAllVenues([]);
+        setError("Failed to load venues. Please try again.");
         setLoadingVenues(false);
       });
   }, []);
@@ -61,8 +115,43 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
 
   const showMore = () => setVisible(v => Math.min(v + PAGE, allVenues.length));
 
+  const sportsOptions = [
+    "All Sports",
+    ...Array.from(
+      new Set(
+        allVenues.flatMap((venue) => Array.isArray(venue.sports) ? venue.sports : [])
+      )
+    ).sort((a, b) => a.localeCompare(b)),
+  ];
+
+  const venuesWithDistance = allVenues
+    .map((venue) => {
+      if (!userCoords || !Number.isFinite(venue.latitude) || !Number.isFinite(venue.longitude)) {
+        return {
+          ...venue,
+          distanceKm: null,
+        };
+      }
+
+      return {
+        ...venue,
+        distanceKm: haversineKm(
+          userCoords.latitude,
+          userCoords.longitude,
+          venue.latitude,
+          venue.longitude
+        ),
+      };
+    })
+    .sort((a, b) => {
+      if (a.distanceKm === null && b.distanceKm === null) return 0;
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
   // Filter venues based on search term AND sport filter
-  const filteredVenues = allVenues.filter(v => {
+  const filteredVenues = venuesWithDistance.filter(v => {
     const matchesSearch = !searchTerm || 
       v.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
       v.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -100,6 +189,22 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
             }}
           />
         </div>
+        <div className="mt-3">
+          <select
+            className="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700"
+            value={sportFilter}
+            onChange={(e) => {
+              setSportFilter(e.target.value);
+              setVisible(PAGE);
+            }}
+          >
+            {sportsOptions.map((sport) => (
+              <option key={sport} value={sport}>
+                {sport}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -110,7 +215,7 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
 
       {filteredVenues.length === 0 ? (
         <div className="text-center py-10 text-gray-500 font-medium">
-          No venues found matching your search.
+          {allVenues.length === 0 ? "No venues available right now." : "No venues found matching your search."}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

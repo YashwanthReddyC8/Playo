@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -41,4 +42,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      */
     List<Booking> findByVenueIdAndBookingDateAndStatus(Long venueId, LocalDate bookingDate,
             Booking.BookingStatus status);
+
+        long countByVenueIdAndBookingDateAndTimeSlotAndStatusIn(
+            Long venueId,
+            LocalDate bookingDate,
+            String timeSlot,
+            Collection<Booking.BookingStatus> statuses);
 }

@@ -104,29 +104,30 @@ public class CenterApplicationService {
         application.setReviewedAt(Instant.now());
 
         repository.save(application);
+        String ownerEmail = resolveOwnerEmail(application);
 
         // Send emails based on status
         if (request.status() == ApplicationStatus.APPROVED) {
             // Create OWNER account if not exists
             ownerAccountService.createOrUpdateOwnerAccount(
-                    application.getEmail(),
+                ownerEmail,
                     application.getName(),
                     application.getPhoneNumber());
 
             // Send password reset email
             ownerAccountService.sendPasswordResetEmail(
-                    application.getEmail(),
+                ownerEmail,
                     application.getName());
 
             // Send approval notification
             ownerAccountService.sendApprovalEmail(
-                    application.getEmail(),
+                ownerEmail,
                     application.getSportsCenterName(),
                     application.getName());
         } else if (request.status() == ApplicationStatus.REJECTED) {
             // Send rejection notification
             ownerAccountService.sendRejectionEmail(
-                    application.getEmail(),
+                ownerEmail,
                     application.getSportsCenterName(),
                     application.getName(),
                     request.reviewNotes());
@@ -152,21 +153,22 @@ public class CenterApplicationService {
         SportsCenterApplication application = repository.findOne(
                 byId(applicationId).and(notDeleted()))
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Application not found"));
+        String ownerEmail = resolveOwnerEmail(application);
 
         // 1. Create OWNER account if not exists
         ownerAccountService.createOrUpdateOwnerAccount(
-                application.getEmail(),
+            ownerEmail,
                 application.getName(),
                 application.getPhoneNumber());
 
         // 2. Send password reset email to set up account
         ownerAccountService.sendPasswordResetEmail(
-                application.getEmail(),
+            ownerEmail,
                 application.getName());
 
         // 3. Send approval notification
         ownerAccountService.sendApprovalEmail(
-                application.getEmail(),
+            ownerEmail,
                 application.getSportsCenterName(),
                 application.getName());
 
@@ -222,6 +224,14 @@ public class CenterApplicationService {
 
     private Specification<SportsCenterApplication> byId(Long applicationId) {
         return (root, query, cb) -> cb.equal(root.get("id"), applicationId);
+    }
+
+    private String resolveOwnerEmail(SportsCenterApplication application) {
+        String businessEmail = application.getBusinessEmail();
+        if (businessEmail != null && !businessEmail.isBlank()) {
+            return businessEmail;
+        }
+        return application.getEmail();
     }
 
     @Transactional(readOnly = true)

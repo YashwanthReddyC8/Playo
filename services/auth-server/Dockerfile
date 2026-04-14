@@ -10,6 +10,9 @@ COPY common-models /app/common-models
 # Copy auth-server module
 COPY auth-server /app/auth-server
 
+# Ensure Maven wrappers are executable inside Linux image
+RUN chmod +x /app/common-models/mvnw /app/auth-server/mvnw
+
 # Build both in a single RUN command with persistent cache
 RUN --mount=type=cache,target=/root/.m2 \
     cd /app/common-models && \
