@@ -26,6 +26,11 @@ export default defineConfig({
         secure: true,
         rewrite: (path) => path.replace(/^\/mappls/, ""),
       },
+      "/send-sms": {
+        target: "http://192.168.0.103:8080",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

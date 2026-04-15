@@ -57,11 +57,11 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
   useEffect(() => {
     setLoadingVenues(true);
     setError(null);
-    
+
     axiosInstance.get("/api/owners/centers/public/all")
       .then(res => {
         console.log("✅ Venues fetched from API:", res.data);
-        
+
         const dynamicVenues = (res.data || []).map(center => {
           const facilities = Array.isArray(center.facilities) ? center.facilities : [];
           const sports = facilities
@@ -70,8 +70,8 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
           const slotPrices = facilities.flatMap((facility) =>
             Array.isArray(facility?.slots)
               ? facility.slots
-                  .map((slot) => Number(slot?.price))
-                  .filter((price) => Number.isFinite(price) && price > 0)
+                .map((slot) => Number(slot?.price))
+                .filter((price) => Number.isFinite(price) && price > 0)
               : []
           );
           const minPrice = slotPrices.length > 0 ? Math.min(...slotPrices) : null;
@@ -89,7 +89,7 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
             longitude: Number(center.longitude),
           };
         });
-        
+
         setAllVenues(dynamicVenues);
         setLoadingVenues(false);
       })
@@ -152,14 +152,14 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
 
   // Filter venues based on search term AND sport filter
   const filteredVenues = venuesWithDistance.filter(v => {
-    const matchesSearch = !searchTerm || 
-      v.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = !searchTerm ||
+      v.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (v.sports || []).some(sport => sport.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesSport = sportFilter === "All Sports" || 
+
+    const matchesSport = sportFilter === "All Sports" ||
       (v.sports || []).some(sport => sport.toLowerCase().includes(sportFilter.toLowerCase()));
-    
+
     return matchesSearch && matchesSport;
   });
 
@@ -172,7 +172,7 @@ export default function VenuesList({ initialSearchTerm = "", initialSportFilter 
   return (
     <div>
       {/* Search Bar */}
-      <div className="mb-8 max-w-2xl mx-auto">
+      <div className="hidden mb-8 max-w-2xl mx-auto">
         <div className="relative flex items-center w-full h-12 rounded-lg focus-within:shadow-lg bg-white overflow-hidden border border-gray-200">
           <div className="grid place-items-center h-full w-12 text-gray-300">
             <Search size={20} />

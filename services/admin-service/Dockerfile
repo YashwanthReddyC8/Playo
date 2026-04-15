@@ -8,8 +8,11 @@ COPY common-models /app/common-models
 # Copy admin-service module
 COPY admin-service /app/admin-service
 
-# Ensure Maven wrappers are executable inside Linux image
-RUN chmod +x /app/common-models/mvnw /app/admin-service/mvnw
+RUN apt-get update && apt-get install -y dos2unix
+# Fix scripts
+RUN dos2unix /app/common-models/mvnw && \
+    dos2unix /app/admin-service/mvnw && \
+    chmod +x /app/common-models/mvnw /app/admin-service/mvnw
 
 # Build both in a single RUN command with persistent cache
 RUN --mount=type=cache,target=/root/.m2 \

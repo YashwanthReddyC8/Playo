@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 const PaymentButton = ({
   venueId,
+  venueName,
   selectedDate,
   selectedSlot,
   amount,
@@ -110,7 +111,28 @@ const PaymentButton = ({
 
       const paymentObject = new window.Razorpay(options);
       paymentObject.open();
-
+      const smsUrl = "/send-sms";
+      if (user?.phone && user?.phone.length == 10) {
+        try {
+          const res = await fetch(smsUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              phone: user?.phone,
+              message: `Booking confirmed!\nVenue: ${venueName || "N/A"},\nSport: ${sportName},\nDate: ${selectedDate},\nSlot: ${selectedSlot},\nAmount: ₹${amount}.`,
+            }),
+          });
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`SMS request failed (${res.status}): ${errorText}`);
+          }
+          console.log("SMS notification sent:", res);
+        } catch (smsError) {
+          console.warn("Failed to send SMS notification:", smsError);
+        }
+      }
     } catch (error) {
       const message =
         error?.response?.data?.message ||

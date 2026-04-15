@@ -122,22 +122,24 @@ const normalizeFacilities = (facilities) => {
     }));
 };
 
+const KEY = import.meta.env.VITE_MAPPLS_KEY;
+
 export default function CenterFormModal({ isOpen, onClose, onSubmit, initialData = null, isLoading = false }) {
     const defaultFormData = {
-            name: '',
-            description: '',
-            address: '',
-            city: '',
-            state: '',
-            postalCode: '',
-            latitude: '',
-            longitude: '',
-            phoneNumber: '',
-            email: '',
-            imageUrl: '',
-            inactiveDates: [],
-            facilities: [createEmptyFacility()],
-        };
+        name: '',
+        description: '',
+        address: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        latitude: '',
+        longitude: '',
+        phoneNumber: '',
+        email: '',
+        imageUrl: '',
+        inactiveDates: [],
+        facilities: [createEmptyFacility()],
+    };
 
     const [formData, setFormData] = useState(() => (
         initialData
@@ -172,6 +174,60 @@ export default function CenterFormModal({ isOpen, onClose, onSubmit, initialData
         }
         setErrors({});
     }, [initialData, isOpen]);
+
+    useEffect(() => {
+        if (!formData.latitude || !formData.longitude) return;
+
+        const fetchAddress = async () => {
+            try {
+                const res = await fetch(
+                    `/mappls/search/address/rev-geocode?lat=${formData.latitude}&lng=${formData.longitude}&access_token=${KEY}`
+                );
+                const data = await res.json();
+
+                console.log("Reverse:", data);
+
+                const result = data?.results?.[0];
+                if (!result) return;
+
+                setFormData((prev) => ({
+                    ...prev,
+                    address: `${[
+                        result.street,
+                        result.subSubLocality,
+                        result.subLocality,
+                        result.locality,
+                    ].filter(Boolean).join(', ')}` || '',
+                    city: result.city || '',
+                    state: result.state || '',
+                    postalCode: result.pincode || '',
+                    // optional extras if you want
+                    locality: result.locality || '',
+                    street: result.street || ''
+                }));
+            } catch (e) {
+                console.log("Reverse geocode failed");
+            }
+        };
+
+        fetchAddress();
+    }, [formData.latitude, formData.longitude]);
+
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            setFormData((prev) => ({
+                ...prev,
+                latitude: prev.latitude || lat,
+                longitude: prev.longitude || lng,
+            }));
+        },
+        (err) => {
+            console.log("GPS error: " + err.message);
+            setLoading(false);
+        }
+    );
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -256,8 +312,8 @@ export default function CenterFormModal({ isOpen, onClose, onSubmit, initialData
             }
 
             facility.slots?.forEach((slot, slotIndex) => {
-                    if (!Array.isArray(slot.daysOfWeek) || slot.daysOfWeek.length === 0) {
-                        newErrors[`facility-${facilityIndex}-slot-${slotIndex}-daysOfWeek`] = 'Select at least one day';
+                if (!Array.isArray(slot.daysOfWeek) || slot.daysOfWeek.length === 0) {
+                    newErrors[`facility-${facilityIndex}-slot-${slotIndex}-daysOfWeek`] = 'Select at least one day';
                 }
                 if (!slot.startTime) {
                     newErrors[`facility-${facilityIndex}-slot-${slotIndex}-startTime`] = 'Start time is required';
@@ -414,7 +470,7 @@ export default function CenterFormModal({ isOpen, onClose, onSubmit, initialData
     const currentMonthCalendar = getCurrentMonthCalendar();
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{backgroundColor: 'rgba(0,0,0,0.15)'}}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[94vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b">
@@ -539,7 +595,7 @@ export default function CenterFormModal({ isOpen, onClose, onSubmit, initialData
                         {/* Postal Code */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Postal Code *
+                                PIN Code *
                             </label>
                             <input
                                 type="text"
@@ -644,9 +700,9 @@ export default function CenterFormModal({ isOpen, onClose, onSubmit, initialData
                                     </div>
                                 ))}
 
-                                                        {Array.from({ length: currentMonthCalendar.firstWeekday }).map((_, index) => (
-                                                            <div key={`blank-${index}`} className="rounded-lg border border-transparent px-2 py-2" />
-                                                        ))}
+                                {Array.from({ length: currentMonthCalendar.firstWeekday }).map((_, index) => (
+                                    <div key={`blank-${index}`} className="rounded-lg border border-transparent px-2 py-2" />
+                                ))}
 
                                 {currentMonthCalendar.dates.map((item) => {
                                     const inactive = Array.isArray(formData.inactiveDates) && formData.inactiveDates.includes(item.key);

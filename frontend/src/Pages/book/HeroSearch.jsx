@@ -23,27 +23,63 @@ export default function HeroSearch({
   };
 
   return (
-    <div className="bg-white border-b">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
-        <h1 className="text-base sm:text-lg md:text-xl font-semibold mb-3">
+    <div className="border">
+      <div className="z-20 mx-auto flex w-full max-w-7xl flex-col items-center justify-between space-y-3 px-4 py-4 md:flex-row md:space-y-0 md:px-12">
+        <h1 className="mt-3 w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold md:mt-0 md:text-2xl">
           {headingText}
         </h1>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            className="flex-1 border rounded-lg px-3 sm:px-4 py-2"
-            placeholder="Search by venue name"
-            value={venueName}
-            onChange={handleVenueSearch}
-          />
-          <select 
-            className="border rounded-lg px-3 sm:px-4 py-2 sm:w-48"
-            value={selectedSport}
-            onChange={handleSportFilter}
-          >
-            {sportOptions.map((sport) => (
-              <option key={sport} value={sport}>{sport}</option>
-            ))}
-          </select>
+        <div className="flex w-full flex-col items-center justify-end space-y-3 md:w-auto md:flex-row md:space-y-0">
+          <div className="relative w-full md:mx-4 md:w-64">
+            <div className="flex h-10 flex-col">
+              <div className="flex h-10 w-full items-center rounded-lg border-2 border-gray-200 text-gray-700">
+                <div className="relative ml-2 h-5 w-5 px-1">
+                  <img
+                    alt="search-icon"
+                    src="https://playo-website.gumlet.io/playo-website-v2/logos-icons/search-icon.svg"
+                    className="h-5 w-5 object-contain"
+                  />
+                </div>
+                <input
+                  className="mx-2 w-full appearance-none border-0 text-sm text-gray-700 focus:outline-none"
+                  type="text"
+                  placeholder="Search by venue name"
+                  value={venueName}
+                  onChange={handleVenueSearch}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex h-10 w-full items-center rounded-lg border-2 border-gray-200 text-gray-700 md:w-64">
+            <div className="w-full bg-white">
+              <div className="flex w-full items-center">
+                <div className="mx-2">
+                  <img
+                    alt="sports-filter"
+                    src="https://playo-website.gumlet.io/playo-website-v2/logos-icons/sports-filter.svg"
+                    className="h-5 w-5 object-contain"
+                  />
+                </div>
+                <select
+                  className="w-full appearance-none bg-white text-sm font-semibold text-gray-700 focus:outline-none"
+                  value={selectedSport}
+                  onChange={handleSportFilter}
+                >
+                  {sportOptions.map((sport) => (
+                    <option key={sport} value={sport}>
+                      {sport}
+                    </option>
+                  ))}
+                </select>
+                <div className="mx-2 hidden md:flex">
+                  <img
+                    alt="down-arrow"
+                    src="https://playo-website.gumlet.io/playo-website-v2/logos-icons/down-arrow-dark.svg"
+                    className="h-2 w-3.5 object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

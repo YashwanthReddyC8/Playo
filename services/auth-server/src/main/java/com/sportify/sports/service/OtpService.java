@@ -4,13 +4,17 @@ import com.sportify.sports.entity.OtpVerification;
 import com.sportify.sports.repository.OtpVerificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 import java.time.LocalDateTime;
 import java.util.Random;
 import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.mail.MessagingException;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OtpService {
     private final OtpVerificationRepository otpRepository;
     private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
 
     @Value("${app.email.from:noreply@playo.com}")
     private String fromEmail;
@@ -37,7 +42,7 @@ public class OtpService {
 
             // Reuse the existing record when the email already has a pending OTP
             OtpVerification otpVerification = otpRepository.findByEmail(email)
-                .orElseGet(OtpVerification::new);
+                    .orElseGet(OtpVerification::new);
 
             otpVerification.setEmail(email);
             otpVerification.setOtp(otp);
@@ -135,23 +140,33 @@ public class OtpService {
      */
     private void sendOtpEmail(String toEmail, String otp, int expiryMinutes) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(toEmail);
-            message.setSubject("Your OTP for Playo Registration - " + otp);
-            message.setText(
-                    "Welcome to Playo!\n\n" +
-                            "Your OTP for registration is: " + otp + "\n\n" +
-                            "This OTP will expire in " + expiryMinutes + " minutes.\n" +
-                            "Do not share this OTP with anyone.\n\n" +
-                            "If you didn't request this OTP, please ignore this email.\n\n" +
-                            "Thank you,\n" +
-                            "Playo Team");
-            mailSender.send(message);
+            Context context = new Context();
+            context.setVariable("otp", otp);
+            context.setVariable("expiryMinutes", expiryMinutes);
+
+            sendTemplateEmail(
+                    toEmail,
+                    "Your OTP for Playo Registration",
+                    "otp-email",
+                    context);
             log.info("OTP email sent to: {}", toEmail);
         } catch (Exception e) {
             log.error("Failed to send OTP email to: {}", toEmail, e);
-            throw new RuntimeException("Failed to send OTP email");
+            throw new RuntimeException("Failed to send OTP email", e);
         }
+    }
+
+    private void sendTemplateEmail(String toEmail, String subject, String templateName, Context context)
+            throws MessagingException {
+        String htmlContent = templateEngine.process(templateName, context);
+
+        var mimeMessage = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+        helper.setFrom(fromEmail);
+        helper.setTo(toEmail);
+        helper.setSubject(subject);
+        helper.setText(htmlContent, true);
+
+        mailSender.send(mimeMessage);
     }
 }

@@ -107,10 +107,10 @@ export default function BookingsPage() {
 
             const mappedBookings = res.data.map(b => {
                 const dateObj = parseBookingDate(b.bookingDate);
-                
+
                 return {
                     id: b.id.toString(),
-                    status: b.status === "CONFIRMED" ? 1 : b.status === "CANCELLED" ? 0 : 2, 
+                    status: b.status === "CONFIRMED" ? 1 : b.status === "CANCELLED" ? 0 : 2,
                     rawStatus: b.status,
                     playVisibility: b.playVisibility || "PRIVATE",
                     maxPlayers: b.maxPlayers || 2,
@@ -131,7 +131,7 @@ export default function BookingsPage() {
                     amount: b.amount,
                     bookingDate: b.bookingDate,
                     canCancel: b.status !== "CANCELLED" && isCancelableBooking(b.bookingDate, b.timeSlot)
-                    ,canMakePlay: b.status === "CONFIRMED" && isCancelableBooking(b.bookingDate, b.timeSlot)
+                    , canMakePlay: b.status === "CONFIRMED" && isCancelableBooking(b.bookingDate, b.timeSlot)
                 };
             });
             mappedBookings.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
@@ -153,7 +153,7 @@ export default function BookingsPage() {
 
     const handleCancel = async (bookingId) => {
         if (!window.confirm("Are you sure you want to cancel this booking?")) return;
-        
+
         try {
             await axiosInstance.delete(`/api/owners/bookings/${bookingId}`);
             fetchBookings();
@@ -340,13 +340,13 @@ export default function BookingsPage() {
                     ))
                     : paginatedBookings.length > 0
                         ? paginatedBookings.map((booking) => (
-                                    <BookingCard
-                                        key={booking.id}
-                                        booking={booking}
-                                        onView={() => handleViewBooking(booking)}
-                                        onCancel={booking.canCancel ? () => handleCancel(booking.id) : undefined}
-                                        onMakePlay={booking.canMakePlay ? () => handleOpenPlaySettings(booking) : undefined}
-                                    />
+                            <BookingCard
+                                key={booking.id}
+                                booking={booking}
+                                onView={() => handleViewBooking(booking)}
+                                onCancel={booking.canCancel ? () => handleCancel(booking.id) : undefined}
+                                onMakePlay={booking.canMakePlay ? () => handleOpenPlaySettings(booking) : undefined}
+                            />
                         ))
                         : (
                             <div className="text-center py-10 text-gray-500">
@@ -370,12 +370,12 @@ export default function BookingsPage() {
 
             {viewBooking && (
                 <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold">Booking Details</h3>
+                    <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-gray-900">Booking Details</h3>
                             <button
                                 onClick={() => setViewBooking(null)}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="text-sm font-medium text-gray-500 hover:text-gray-700"
                             >
                                 Close
                             </button>
@@ -384,33 +384,74 @@ export default function BookingsPage() {
                         {viewLoading ? (
                             <p className="text-sm text-gray-500">Loading booking details...</p>
                         ) : (
-                            <div className="space-y-2 text-sm">
-                                <p><span className="font-semibold">Booking ID:</span> {viewBooking.id}</p>
-                                <p><span className="font-semibold">Venue:</span> {viewBooking.venueName || `Venue ID: ${viewBooking.venueId}`}</p>
-                                <p><span className="font-semibold">Sport:</span> {normalizeSportName(viewBooking.sportName)}</p>
-                                <p><span className="font-semibold">Date:</span> {viewBooking.bookingDate}</p>
-                                <p><span className="font-semibold">Slot:</span> {viewBooking.timeSlot}</p>
-                                <p><span className="font-semibold">Amount:</span> ₹{viewBooking.amount}</p>
-                                <p><span className="font-semibold">Status:</span> {viewBooking.status}</p>
-                                {viewBooking.playEnabled && (
-                                    <>
-                                        <p><span className="font-semibold">Play:</span> {viewBooking.playVisibility}</p>
-                                        <p><span className="font-semibold">Participants:</span> {viewBooking.joinedPlayers || 0}/{viewBooking.maxPlayers || 0}</p>
+                            <div className="mt-4 space-y-5 text-sm">
+                                <div className="rounded-xl border border-gray-300 p-4 text-center sm:p-5">
+                                    <div className="grid grid-cols-3 gap-4">
                                         <div>
-                                            <p className="font-semibold mb-1">Participant Users</p>
-                                            <div className="space-y-2">
+                                            <p className="text-xs font-semibold text-gray-500">Booking ID</p>
+                                            <p className="text-base font-semibold text-gray-900">{viewBooking.id}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500">Status</p>
+                                            <p className="text-base font-semibold text-gray-900">{viewBooking.status}</p>
+                                        </div>
+                                        <div className="mt-5">
+                                            <p className="text-xs font-semibold text-gray-500">Venue</p>
+                                            <p className="text-base font-semibold text-gray-900">{viewBooking.venueName || `Venue ID: ${viewBooking.venueId}`}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-5 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500">Sport</p>
+                                            <p className="text-gray-800">{normalizeSportName(viewBooking.sportName)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500">Date</p>
+                                            <p className="text-gray-800">{viewBooking.bookingDate}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500">Slot</p>
+                                            <p className="text-gray-800">{viewBooking.timeSlot}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500">Amount</p>
+                                            <p className="text-gray-800">₹{viewBooking.amount}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {viewBooking.playEnabled && (
+                                    <div className="space-y-4">
+                                        <div className="rounded-xl border border-gray-300 p-4 text-center sm:p-5">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-xs font-semibold text-gray-500">Play</p>
+                                                    <p className="text-base font-semibold text-gray-900">{viewBooking.playVisibility}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-gray-500">Participants</p>
+                                                    <p className="text-base font-semibold text-gray-900">{viewBooking.joinedPlayers || 0}/{viewBooking.maxPlayers || 0}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-center font-semibold text-gray-900">Participant Users</p>
+                                            <div className="mt-3 space-y-2">
                                                 {(viewBooking.participantUserIds || []).map((participantId) => {
                                                     const isHost = String(participantId) === String(viewBooking.hostUserId);
                                                     const canManage = currentUserId === String(viewBooking.hostUserId);
 
                                                     return (
-                                                        <div key={participantId} className="flex items-center justify-between rounded border px-2 py-1">
-                                                            <span className="text-xs">{toDisplayName(participantId)}{isHost ? " (Host)" : ""}</span>
+                                                        <div key={participantId} className="flex items-center justify-between rounded-xl border border-gray-300 px-3 py-2">
+                                                            <span className="text-xs text-gray-700">
+                                                                {toDisplayName(participantId)}{isHost ? " (Host)" : ""}
+                                                            </span>
                                                             {!isHost && canManage && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleRemoveParticipant(viewBooking.id, participantId)}
-                                                                    className="text-xs text-red-600 hover:text-red-700"
+                                                                    className="text-xs font-semibold text-red-600 hover:text-red-700"
                                                                 >
                                                                     Remove
                                                                 </button>
@@ -422,33 +463,33 @@ export default function BookingsPage() {
                                         </div>
 
                                         {currentUserId === String(viewBooking.hostUserId) && (
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <p className="font-semibold mb-1">Add Participant</p>
-                                                    <div className="flex gap-2">
+                                            <div className="space-y-4">
+                                                <div className="rounded-xl border border-gray-300 p-4 sm:p-5">
+                                                    <p className="text-center font-semibold text-gray-900">Add Participant</p>
+                                                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                                         <input
                                                             type="text"
                                                             placeholder="Participant email or user ID"
                                                             value={newParticipantUserId}
                                                             onChange={(event) => setNewParticipantUserId(event.target.value)}
-                                                            className="flex-1 rounded border px-2 py-1 text-xs"
+                                                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-xs"
                                                         />
                                                         <button
                                                             type="button"
                                                             onClick={() => handleAddParticipant(viewBooking.id)}
-                                                            className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                                                            className="rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700"
                                                         >
                                                             Add
                                                         </button>
                                                     </div>
                                                 </div>
 
-                                                <div>
-                                                    <p className="font-semibold mb-1">Payment Split (%)</p>
-                                                    <div className="space-y-2">
+                                                <div className="rounded-xl border border-gray-300 p-4 sm:p-5">
+                                                    <p className="text-center font-semibold text-gray-900">Payment Split (%)</p>
+                                                    <div className="mt-3 space-y-2">
                                                         {(viewBooking.participantUserIds || []).map((participantId) => (
-                                                            <div key={`split-${participantId}`} className="flex items-center gap-2">
-                                                                <span className="w-1/2 text-xs truncate">{toDisplayName(participantId)}</span>
+                                                            <div key={`split-${participantId}`} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                                                <span className="w-full text-xs text-gray-700 sm:w-1/2 sm:truncate">{toDisplayName(participantId)}</span>
                                                                 <input
                                                                     type="number"
                                                                     min="0"
@@ -459,7 +500,7 @@ export default function BookingsPage() {
                                                                         ...current,
                                                                         [participantId]: event.target.value,
                                                                     }))}
-                                                                    className="w-1/2 rounded border px-2 py-1 text-xs"
+                                                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs sm:w-1/2"
                                                                 />
                                                             </div>
                                                         ))}
@@ -467,14 +508,14 @@ export default function BookingsPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleSaveSplitPercentages(viewBooking.id)}
-                                                        className="mt-2 rounded bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                                                        className="mx-auto mt-4 flex rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                                                     >
                                                         Save Split
                                                     </button>
                                                 </div>
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         )}

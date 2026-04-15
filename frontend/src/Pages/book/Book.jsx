@@ -55,24 +55,24 @@ export default function Book() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <HeroSearch 
+      <HeroSearch
         onSearchChange={setHeroSearchTerm}
         onSportFilter={setHeroSportFilter}
         sportOptions={sportOptions}
         currentSport={heroSportFilter}
       />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+      <div className=" hidden max-w-7xl mx-auto px-3 sm:px-4">
         <Tabs activeTab={activeTab} setActiveTab={setActiveTab} counts={counts} />
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        {activeTab === "venues" && (
-          <VenuesList 
-            initialSearchTerm={heroSearchTerm}
-            initialSportFilter={heroSportFilter}
-          />
-        )}
+        {/* {activeTab === "venues" && ( */}
+        <VenuesList
+          initialSearchTerm={heroSearchTerm}
+          initialSportFilter={heroSportFilter}
+        />
+        {/* )} */}
         {activeTab === "coaching" && <CoachingList />}
         {activeTab === "events" && <EventsList />}
         {activeTab === "memberships" && <MembershipList />}

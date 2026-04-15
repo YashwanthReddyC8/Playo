@@ -10,8 +10,11 @@ COPY common-models /app/common-models
 # Copy auth-server module
 COPY auth-server /app/auth-server
 
-# Ensure Maven wrappers are executable inside Linux image
-RUN chmod +x /app/common-models/mvnw /app/auth-server/mvnw
+RUN apt-get update && apt-get install -y dos2unix
+# Fix scripts
+RUN dos2unix /app/common-models/mvnw && \
+    dos2unix /app/auth-server/mvnw && \
+    chmod +x /app/common-models/mvnw /app/auth-server/mvnw
 
 # Build both in a single RUN command with persistent cache
 RUN --mount=type=cache,target=/root/.m2 \

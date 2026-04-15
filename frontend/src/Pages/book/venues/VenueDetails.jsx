@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import PaymentButton from "../../../components/PaymentButton";
 import { Calendar, Clock, MapPin, Star } from "lucide-react";
 import axiosInstance from "../../../api/axios";
+import axios from "axios";
 
 const SPORT_ICON_BY_NAME = {
   Badminton: "https://playo.gumlet.io/V3SPORTICONS/SP83.png",
@@ -146,8 +147,8 @@ export default function VenueDetails() {
       .filter((slot) => slot?.isActive !== false)
       .filter((slot) => Array.isArray(slot.daysOfWeek) && slot.daysOfWeek.includes(weekday))
       .filter((slot) => !(Array.isArray(slot.inactiveDates) && slot.inactiveDates.includes(dateKey)))
-        .flatMap((slot) => expandToHourlySlots(slot))
-        .sort((a, b) => formatTime(a.startTime).localeCompare(formatTime(b.startTime)));
+      .flatMap((slot) => expandToHourlySlots(slot))
+      .sort((a, b) => formatTime(a.startTime).localeCompare(formatTime(b.startTime)));
   };
 
   const activeDates = useMemo(() => {
@@ -298,14 +299,14 @@ export default function VenueDetails() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-        
+
         {/* Left Column: Details */}
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
             <div>
               <div className="text-gray-500 text-sm font-medium uppercase tracking-wider">Rating</div>
               <div className="flex items-center gap-1 text-xl font-bold mt-1 text-gray-800">
-                <Star className="text-yellow-400 fill-yellow-400" size={24} /> 
+                <Star className="text-yellow-400 fill-yellow-400" size={24} />
                 {venue.rating} <span className="text-gray-400 text-base font-normal">({venue.reviews} Reviews)</span>
               </div>
             </div>
@@ -314,6 +315,28 @@ export default function VenueDetails() {
               <div className="text-2xl font-bold text-green-600 mt-1">
                 ₹{minFacilityPrice || 0} <span className="text-sm text-gray-400 font-normal">/slot</span>
               </div>
+            </div>
+          </div>
+
+          {/* Sports Available */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-xl font-bold mb-4">Sports Available</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+              {sports.map((sport) => (
+                <button
+                  key={sport.name}
+                  type="button"
+                  onClick={() => setSelectedSport(sport.name)}
+                  className={`flex flex-col items-center p-2 sm:p-3 border rounded-xl hover:border-green-500 hover:shadow-md cursor-pointer transition-all ${selectedSport === sport.name ? "border-green-500 bg-green-50" : ""
+                    }`}
+                >
+                  <img src={sport.icon} alt={sport.name} className="w-10 h-10 sm:w-12 sm:h-12 object-contain mb-2" />
+                  <span className="text-xs font-semibold text-center text-gray-700">{sport.name}</span>
+                </button>
+              ))}
+              {sports.length === 0 && (
+                <p className="col-span-full text-sm text-gray-500">No sports configured for this center yet.</p>
+              )}
             </div>
           </div>
 
@@ -334,14 +357,13 @@ export default function VenueDetails() {
                     key={date}
                     onClick={() => setSelectedDate(date)}
                     disabled={isDisabled}
-                    className={`flex-shrink-0 flex flex-col items-center justify-center w-20 h-24 rounded-2xl border transition-all ${
-                      isDisabled
-                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                        :
-                      isSelected 
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30' 
+                    className={`flex-shrink-0 flex flex-col items-center justify-center w-20 h-24 rounded-2xl border transition-all ${isDisabled
+                      ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                      :
+                      isSelected
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30'
                         : 'border-gray-200 text-gray-600 hover:border-blue-400'
-                    }`}
+                      }`}
                   >
                     <span className="text-sm font-medium">{day}</span>
                     <span className="text-2xl font-bold mt-1">{dayNum}</span>
@@ -362,24 +384,22 @@ export default function VenueDetails() {
               {selectedSport && availableSlots.map((slot) => {
                 const isBooked = slot.isBooked;
                 const isSelected = selectedSlot?.id === slot.id && !isBooked;
-
                 return (
                   <button
                     key={slot.id}
                     disabled={isBooked}
                     onClick={() => setSelectedSlotId(slot.id)}
-                    className={`py-3 px-2 rounded-xl border text-sm font-semibold transition-all ${
-                      isBooked
-                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed line-through'
-                        : isSelected
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30'
-                          : 'border-gray-200 text-gray-700 hover:border-blue-400'
-                    }`}
+                    className={`py-3 px-2 rounded-xl border text-sm font-semibold transition-all ${isBooked
+                      ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed line-through'
+                      : isSelected
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30'
+                        : 'border-gray-200 text-gray-700 hover:border-blue-400'
+                      }`}
                   >
                     {slot.slotLabel}
                     <div className="text-[11px] font-medium mt-1 opacity-90">₹{slot.price}</div>
                     <div className="text-[10px] mt-1 opacity-80">
-                      {slot.availableCourts > 0 ? `${slot.availableCourts} courts left` : "No courts left"}
+                      {slot.isPastForToday ? "" : slot.availableCourts > 0 ? `${slot.availableCourts} courts left` : "No courts left"}
                     </div>
                   </button>
                 );
@@ -389,29 +409,6 @@ export default function VenueDetails() {
               )}
               {selectedSport && availableSlots.length === 0 && (
                 <p className="col-span-full text-sm text-gray-500">No active slots for selected date/sport.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Sports Available */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-xl font-bold mb-4">Sports Available</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-              {sports.map((sport) => (
-                <button
-                  key={sport.name}
-                  type="button"
-                  onClick={() => setSelectedSport(sport.name)}
-                  className={`flex flex-col items-center p-2 sm:p-3 border rounded-xl hover:border-green-500 hover:shadow-md cursor-pointer transition-all ${
-                    selectedSport === sport.name ? "border-green-500 bg-green-50" : ""
-                  }`}
-                >
-                  <img src={sport.icon} alt={sport.name} className="w-10 h-10 sm:w-12 sm:h-12 object-contain mb-2" />
-                  <span className="text-xs font-semibold text-center text-gray-700">{sport.name}</span>
-                </button>
-              ))}
-              {sports.length === 0 && (
-                <p className="col-span-full text-sm text-gray-500">No sports configured for this center yet.</p>
               )}
             </div>
           </div>
@@ -451,8 +448,8 @@ export default function VenueDetails() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
             <h3 className="text-xl font-bold mb-4">About Venue</h3>
             <div className="text-sm text-gray-600 space-y-4">
-              <p><strong>Box Cricket:</strong><br/>Appropriate sports shoes are recommended for Box Cricket to ensure safety and grip.<br/>Sports equipment availability: bat, ball, and wickets.<br/>Barefoot play is strictly prohibited.</p>
-              <p><strong>Football:</strong><br/>Wearing football studs while playing at the facility is recommended but not compulsory.<br/>Metal studs are not allowed.</p>
+              <p><strong>Box Cricket:</strong><br />Appropriate sports shoes are recommended for Box Cricket to ensure safety and grip.<br />Sports equipment availability: bat, ball, and wickets.<br />Barefoot play is strictly prohibited.</p>
+              <p><strong>Football:</strong><br />Wearing football studs while playing at the facility is recommended but not compulsory.<br />Metal studs are not allowed.</p>
             </div>
           </div>
         </div>
@@ -461,7 +458,7 @@ export default function VenueDetails() {
         <div className="lg:col-span-1">
           <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 sticky top-24">
             <h3 className="text-xl font-bold mb-6">Booking Summary</h3>
-            
+
             <div className="space-y-4 mb-6">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">Date</span>
@@ -485,22 +482,20 @@ export default function VenueDetails() {
                   <button
                     type="button"
                     onClick={() => setPlayVisibility("PRIVATE")}
-                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                      playVisibility === "PRIVATE"
-                        ? "border-green-600 bg-green-50 text-green-700"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${playVisibility === "PRIVATE"
+                      ? "border-green-600 bg-green-50 text-green-700"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     Private
                   </button>
                   <button
                     type="button"
                     onClick={() => setPlayVisibility("PUBLIC")}
-                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                      playVisibility === "PUBLIC"
-                        ? "border-green-600 bg-green-50 text-green-700"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                    }`}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${playVisibility === "PUBLIC"
+                      ? "border-green-600 bg-green-50 text-green-700"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
                   >
                     Public
                   </button>
@@ -526,8 +521,9 @@ export default function VenueDetails() {
               </div>
             </div>
 
-            <PaymentButton 
+            <PaymentButton
               venueId={venue.id}
+              venueName={venue.title}
               selectedDate={selectedDate}
               selectedSlot={selectedSlotLabel}
               amount={selectedPrice}
@@ -537,7 +533,6 @@ export default function VenueDetails() {
               playVisibility={playVisibility}
               maxPlayers={maxPlayers}
             />
-            
             <p className="text-xs text-center text-gray-400 mt-4 leading-relaxed">
               By proceeding to book, you agree to our Terms of Service. Secure payments powered by Razorpay.
             </p>
